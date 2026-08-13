@@ -25,12 +25,17 @@ import { PageHeader } from "@/components/topbar";
 import { Panel, StatCard } from "@/components/stat-card";
 import { AddCaseLauncher } from "@/components/cases/add-case-launcher";
 import { CourtCaseBlock } from "@/components/cases/court-case-block";
+import { ReportExportBar } from "@/components/reports/report-export-bar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/cases/auth-context";
 import { useCaseStore } from "@/lib/cases/case-store";
 import { EXTERNAL_COURTS, INTERNAL_COURTS } from "@/lib/cases/courts";
 import { casesByMonth } from "@/lib/cases/mock-cases";
 import { ROLE_LABELS } from "@/lib/cases/permissions";
+import {
+  buildDashboardPositionReport,
+  buildExecutivePackReport,
+} from "@/lib/reports/builders";
 import type { CaseCategory } from "@/lib/cases/types";
 
 export const Route = createFileRoute("/_shell/dashboard")({
@@ -101,6 +106,42 @@ function DashboardPage() {
           </div>
         }
       />
+
+      {can("cases:view") ? (
+        <ReportExportBar
+          title="Official reports & exports"
+          description="Consolidated case position in Government of the Punjab / ETPB letterhead style. Use Executive pack for Board/Chairman briefing (Admin+)."
+          buildPayload={() =>
+            buildDashboardPositionReport(cases, user, {
+              internal: internalTotal,
+              external: externalTotal,
+              pending,
+              decided,
+              restraining,
+              direction,
+            })
+          }
+          extras={
+            user?.role === "admin" || user?.role === "super-admin"
+              ? [
+                  {
+                    label: "Executive pack (PDF)",
+                    formats: ["pdf"],
+                    buildPayload: () =>
+                      buildExecutivePackReport(cases, user, {
+                        internal: internalTotal,
+                        external: externalTotal,
+                        pending,
+                        decided,
+                        restraining,
+                        direction,
+                      }),
+                  },
+                ]
+              : undefined
+          }
+        />
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

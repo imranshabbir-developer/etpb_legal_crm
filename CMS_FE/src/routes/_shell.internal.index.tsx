@@ -3,12 +3,14 @@ import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 
 import { CourtCaseBlock } from "@/components/cases/court-case-block";
 import { AddCaseLauncher } from "@/components/cases/add-case-launcher";
+import { ReportExportBar } from "@/components/reports/report-export-bar";
 import { PageHeader } from "@/components/topbar";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/cases/auth-context";
 import { useCaseStore } from "@/lib/cases/case-store";
 import { INTERNAL_COURTS } from "@/lib/cases/courts";
+import { buildLayerSummaryReport } from "@/lib/reports/builders";
 
 export const Route = createFileRoute("/_shell/internal/")({
   head: () => ({
@@ -25,8 +27,8 @@ export const Route = createFileRoute("/_shell/internal/")({
 });
 
 function InternalCourtsPage() {
-  const { can } = useAuth();
-  const { countByLayer } = useCaseStore();
+  const { can, user } = useAuth();
+  const { cases, countByLayer } = useCaseStore();
 
   return (
     <div className="space-y-5 p-3 sm:space-y-6 sm:p-5 md:p-6">
@@ -42,6 +44,14 @@ function InternalCourtsPage() {
           </div>
         }
       />
+
+      {can("cases:view") ? (
+        <ReportExportBar
+          title="Internal Courts — official summary"
+          description="Court-wise totals for decided, pending, restraining and direction matters."
+          buildPayload={() => buildLayerSummaryReport("internal", INTERNAL_COURTS, cases, user)}
+        />
+      ) : null}
 
       <Panel title="How to work this register">
         <ol className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">

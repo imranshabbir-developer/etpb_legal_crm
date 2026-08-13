@@ -62,7 +62,10 @@ export type AppUser = {
 };
 
 export type SessionUser = {
+  id: string;
   name: string;
   email: string;
   role: UserRole;
+  roleName?: string;
+  permissions?: string[];
 };
