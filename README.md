@@ -2,7 +2,7 @@
 
 **Evacuee Trust Property Board (ETPB) / IPS Legal Case Management CRM** — a modern web application for tracking legal cases across **internal** and **external** courts, with role-based access, dashboards, notifications, and user management.
 
-> Application code lives in `CMS_Backend/` (TanStack Start + React). `CMS_Frontend/` is reserved for a future separate frontend.
+> Application UI lives in `CMS_FE/` (TanStack Start + React). `CMS_BE/` is reserved for the backend API.
 
 ---
 
@@ -92,14 +92,14 @@ Auth is currently **client-side / demo session** (localStorage). Suitable for UI
 ETPB/
 ├── README.md                 ← you are here
 ├── .gitignore
-├── CMS_Backend/              ← main Legal CRM app (TanStack Start)
+├── CMS_FE/                   ← Legal CRM frontend (TanStack Start)
 │   ├── src/
 │   │   ├── routes/           ← pages (login, dashboard, courts, users, …)
 │   │   ├── components/       ← UI, cases, sidebar, assistant
 │   │   └── lib/cases/        ← domain types, permissions, courts, store
 │   ├── public/               ← static assets
 │   └── package.json
-└── CMS_Frontend/             ← placeholder for future frontend package
+└── CMS_BE/                   ← placeholder for backend API
 ```
 
 ---
@@ -118,7 +118,7 @@ git clone https://github.com/imranshabbir-developer/etpb_legal_crm.git
 cd etpb_legal_crm
 git checkout imran-dev
 
-cd CMS_Backend
+cd CMS_FE
 npm install
 npm run dev
 ```
@@ -203,7 +203,7 @@ git push origin imran-dev
 ## Notes
 
 - Case data is currently driven by an **in-app store / mock data** for CRM UI flows.
-- `CMS_Frontend/` is empty by design until a separate frontend package is added.
+- `CMS_BE/` is empty by design until the backend API package is added.
 - Do not commit `.env`, `.dev.vars`, `node_modules`, or build caches (see root `.gitignore`).
 
 ---
