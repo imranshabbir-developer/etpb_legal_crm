@@ -7,6 +7,7 @@ import { CaseDetailDialog } from "@/components/cases/case-detail-dialog";
 import { CaseFormDialog } from "@/components/cases/case-form-dialog";
 import { CaseTable } from "@/components/cases/case-table";
 import { AddCaseLauncher } from "@/components/cases/add-case-launcher";
+import { ReportExportBar } from "@/components/reports/report-export-bar";
 import { PageHeader } from "@/components/topbar";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   formatCourtLabel,
   getCourtsByLayer,
 } from "@/lib/cases/courts";
+import { buildCourtCategoryRegisterReport } from "@/lib/reports/builders";
 import type { CaseCategory, CaseRecord, CourtDefinition, CourtLayer } from "@/lib/cases/types";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +43,7 @@ export function CaseRegisterPage({
   category: CaseCategory;
   layer: CourtLayer;
 }) {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const navigate = useNavigate();
   const { getForCourtCategory, addCase, updateCase, deleteCase, deleteCases, clearCourtCategory } =
     useCaseStore();
@@ -186,6 +188,15 @@ export function CaseRegisterPage({
           </Button>
         ))}
       </div>
+
+      {can("cases:view") ? (
+        <ReportExportBar
+          compact
+          title={`${CASE_CATEGORY_LABELS[category]} register export`}
+          description="Official cause list / register for this court and category."
+          buildPayload={() => buildCourtCategoryRegisterReport(court, category, rows, user)}
+        />
+      ) : null}
 
       <Panel
         title={`${CASE_CATEGORY_LABELS[category]} — case register`}

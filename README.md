@@ -2,7 +2,13 @@
 
 **Evacuee Trust Property Board (ETPB) / IPS Legal Case Management CRM** — a modern web application for tracking legal cases across **internal** and **external** courts, with role-based access, dashboards, notifications, and user management.
 
-> Application UI lives in `CMS_FE/` (TanStack Start + React). `CMS_BE/` is reserved for the backend API.
+> Application UI lives in `CMS_FE/` (TanStack Start + React). API lives in `CMS_BE/` (Express + Sequelize + PostgreSQL + JWT).
+
+---
+
+## Project completion plan
+
+See **[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)** for the full phase-wise roadmap (APIs, FE integration, portable DB seeding without dumps, Railway deploy, and API verification steps).
 
 ---
 
@@ -96,10 +102,13 @@ ETPB/
 │   ├── src/
 │   │   ├── routes/           ← pages (login, dashboard, courts, users, …)
 │   │   ├── components/       ← UI, cases, sidebar, assistant
-│   │   └── lib/cases/        ← domain types, permissions, courts, store
-│   ├── public/               ← static assets
+│   │   └── lib/              ← API client + domain helpers
+│   ├── public/
 │   └── package.json
-└── CMS_BE/                   ← placeholder for backend API
+└── CMS_BE/                   ← Express + Sequelize + PostgreSQL API
+    ├── src/modules/auth|roles
+    ├── src/models|middleware|config
+    └── package.json
 ```
 
 ---
@@ -118,12 +127,21 @@ git clone https://github.com/imranshabbir-developer/etpb_legal_crm.git
 cd etpb_legal_crm
 git checkout imran-dev
 
-cd CMS_FE
+# Backend API (port 4000)
+cd CMS_BE
+cp .env.example .env   # already configured for local Postgres
+npm install
+npm run db:setup
+npm run dev
+
+# Frontend (port 3000) — new terminal
+cd ../CMS_FE
+cp .env.example .env   # VITE_API_URL=http://127.0.0.1:4000/api
 npm install
 npm run dev
 ```
 
-Open **http://localhost:3000** (Vite default host/port as configured).
+Open **http://localhost:3000**. Login uses real JWT auth against Postgres roles/users.
 
 ### Other scripts
 
@@ -202,8 +220,7 @@ git push origin imran-dev
 
 ## Notes
 
-- Case data is currently driven by an **in-app store / mock data** for CRM UI flows.
-- `CMS_BE/` is empty by design until the backend API package is added.
+- Auth/roles are **database-backed** (JWT). Case registers still use in-app mock data until case APIs are added.
 - Do not commit `.env`, `.dev.vars`, `node_modules`, or build caches (see root `.gitignore`).
 
 ---

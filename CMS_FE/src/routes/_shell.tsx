@@ -1,16 +1,39 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardAtmosphere } from "@/components/dashboard-atmosphere";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { Topbar } from "@/components/topbar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/cases/auth-context";
 
 export const Route = createFileRoute("/_shell")({
   component: ShellLayout,
 });
 
 function ShellLayout() {
+  const navigate = useNavigate();
+  const { user, ready } = useAuth();
+
+  useEffect(() => {
+    if (ready && !user) {
+      void navigate({ to: "/" });
+    }
+  }, [ready, user, navigate]);
+
+  if (!ready) {
+    return (
+      <div className="flex h-[100dvh] items-center justify-center bg-dashboard-base text-sm text-muted-foreground">
+        Checking session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <SidebarProvider className="h-[100dvh] overflow-hidden">
       <div className="mobile-app-shell app-shell relative flex h-[100dvh] w-full overflow-hidden bg-dashboard-base">
