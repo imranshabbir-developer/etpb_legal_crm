@@ -30,7 +30,7 @@
 
 | Area | Status |
 | --- | --- |
-| FE shell UI (dashboard, courts, cases UI, users UI, settings UI, notifications UI) | ✅ Built |
+| FE shell UI (dashboard, courts, cases UI, users UI, settings UI) | ✅ Built |
 | Role-based UI permissions | ✅ Client-side + API permissions when logged in |
 | BE modular structure | ✅ `config` / `models` / `middleware` / `modules` / `routes` |
 | Postgres connection | ✅ Local DB `etpb_cms` |
@@ -41,21 +41,30 @@
 
 | Module | FE source today | Backend |
 | --- | --- | --- |
-| Cases CRUD | `CMS_FE/src/lib/cases/case-store.tsx` + `localStorage` (`ips.cases.v1`) + `mock-cases.ts` | ❌ No Case model/API |
-| Courts / categories | Hardcoded `CMS_FE/src/lib/cases/courts.ts` | ❌ No Court tables/API |
-| Users directory CRUD | In-memory `DEMO_USERS` on `_shell.users.tsx` | ❌ No users CRUD routes (models exist) |
-| Notifications | Static `notifications.ts` | ❌ Missing |
-| Settings / modules | Toast + theme `localStorage` | ❌ Missing |
-| Dashboard charts / aggregates | Derived from mock cases + hardcoded monthly series | ❌ Missing stats API |
-| Assistant answers | Reads mock case counts | Depends on cases API later |
+| Cases CRUD | Wired to `/api/cases` (Postgres) | ✅ Case model + CRUD + seed |
+| Courts / categories | Loaded from `/api/courts`; Admin can add courts | ✅ Court model + seed + list/get/create/update |
+| Users directory CRUD | Wired to `/api/users` | ✅ Phase 1 done |
+| Hearing reminders | Live from case next dates (`/api/reminders` + dashboard) | ✅ Phase 5 |
+| Persistent notifications | Per-user inbox with read state (`/api/notifications`) | ✅ Complete Remaining |
+| Settings / modules | Wired to `/api/settings/*` (theme local) | ✅ Phase 6 |
+| Dashboard charts / aggregates | `/api/dashboard/summary` + live cases | ✅ Phase 4 (summary) |
+| Assistant answers | Live case counts when signed in | Depends on case-store / dashboard |
 
-### Existing API surface (only)
+### Existing API surface
 
 ```text
 GET  /api/health
 GET  /api/roles
 POST /api/auth/login
-GET  /api/auth/me          (Bearer JWT)
+GET  /api/auth/me
+GET/POST /api/users  PATCH /api/users/:id  PATCH /api/users/:id/status
+GET/POST /api/courts  GET/PATCH /api/courts/:id
+GET/POST /api/cases  GET/PATCH/DELETE /api/cases/:id  DELETE /api/cases
+GET  /api/dashboard/summary
+GET  /api/reminders
+GET  /api/notifications  PATCH /api/notifications/:id/read  POST /api/notifications/read-all
+GET/PATCH /api/settings/profile  POST /api/settings/password
+GET/PATCH /api/settings/modules
 ```
 
 ### Seeded demo accounts (already in DB seed)
@@ -90,14 +99,15 @@ GET  /api/auth/me          (Bearer JWT)
 
 ```text
 CMS_BE/src/modules/
-  auth/          ✅ exists
-  roles/         ✅ exists
-  users/         ⬜ CRUD + status + role assign
-  courts/        ⬜ courts + category matrix
-  cases/         ⬜ full case register CRUD + filters
-  dashboard/     ⬜ stats / charts aggregates
-  notifications/ ⬜ list / mark-read / generate from hearings
-  settings/      ⬜ profile, password, module flags
+  auth/          ✅
+  roles/         ✅
+  users/         ✅
+  courts/        ✅
+  cases/         ✅
+  dashboard/     ✅
+  reminders/     ✅ (live from case next-hearing dates)
+  notifications/ ✅ (persistent per-user inbox + read state)
+  settings/      ✅
 ```
 
 ### Frontend clients to build
@@ -106,15 +116,16 @@ CMS_BE/src/modules/
 CMS_FE/src/lib/api/
   client.ts   ✅
   auth.ts     ✅
-  users.ts    ⬜
-  courts.ts   ⬜
-  cases.ts    ⬜
-  dashboard.ts ⬜
-  notifications.ts ⬜
-  settings.ts ⬜
+  users.ts    ✅
+  courts.ts   ✅
+  cases.ts    ✅
+  dashboard.ts ✅
+  reminders.ts ✅
+  notifications.ts ✅
+  settings.ts ✅
 ```
 
-Replace `case-store` localStorage with API-backed React Query (or keep store but hydrate from API).
+`case-store` is API-backed (no localStorage primary store). **Reminders** are derived live from case next-hearing dates (`GET /api/reminders`). **Notifications** are a separate Postgres inbox synced from those reminders, with per-user `readAt`.
 
 ---
 
@@ -137,7 +148,7 @@ No SQL dump required.
 | Artifact | Purpose |
 | --- | --- |
 | `CMS_BE/src/database/migrate.js` | Ensure tables exist |
-| `CMS_BE/src/database/seed.js` | Expand to courts, categories, sample cases, notifications defaults |
+| `CMS_BE/src/database/seed.js` | Expand to courts, categories, sample cases |
 | `CMS_BE/src/database/seed-data/` | JSON/JS reference data (courts matrix, sample cases) |
 | `npm run db:setup` | `migrate && seed` one command |
 | Optional `npm run db:reset` | Drop + recreate + seed (dev only) |
@@ -241,34 +252,42 @@ After `db:setup`, the other laptop has the **same roles, users, courts, and demo
 
 ---
 
-### Phase 2 — Courts & categories (reference data in DB)
+### Phase 2 — Courts & categories (reference data in DB) ✅ IMPLEMENTED
+
+**Status:** Delivered — `Court` model + seed (5 internal + 7 external) + `GET /api/courts` (+ `?layer=`) + `GET /api/courts/:id|slug`. FE Internal/External/Dashboard/Add-case load from API with offline fallback.
 
 **Objective:** Stop relying on hardcoded `courts.ts` as source of truth.
 
 **Backend**
-- Models: `Court`, `CaseCategory` (or enum + join `court_categories`)
-- Seed from current FE court matrix (internal 5 + external 7, category rules)
+- Models: `Court` (slug + JSONB categories; categories kept as enum-like strings on the court)
+- Seed from FE court matrix (internal 5 + external 7, category rules)
 - APIs:
   - `GET /api/courts`
-  - `GET /api/courts/:id`
+  - `GET /api/courts/:id` (UUID or slug)
   - `GET /api/courts?layer=internal|external`
 
 **Frontend**
-- Load courts from API for Internal/External index pages.
-- Keep temporary FE fallback if API down (optional, then remove).
+- Load courts from API for Internal/External index, dashboard blocks, category route loaders, Add Case picker.
+- Temporary FE fallback if API down (`courts.ts`).
+
+**Agent verified**
+- `npm run db:seed` → 12 courts
+- `npm run test:courts` → **PASSED**
 
 **Exit criteria**
-- Court cards and category links come from DB seed on any new laptop.
+- Court cards and category links come from DB seed on any new laptop. ✅
 
 ---
 
-### Phase 3 — Cases API (core CRM)
+### Phase 3 — Cases API (core CRM) ✅ IMPLEMENTED
+
+**Status:** Delivered — Case model + seed (~140 demo rows) + full CRUD APIs. FE case store loads/mutates via API (no localStorage primary store).
 
 **Objective:** Full case register persisted in Postgres; FE CRUD talks to API.
 
 **Backend model `Case`**
 Map all FE `CaseRecord` fields (`types.ts`) to columns + indexes on:
-- `court_id`, `layer`, `case_category`, `case_no`, `next_date_of_hearing`
+- `court_slug` / `court_uuid`, `layer`, `case_category`, `case_no`, `next_date_of_hearing`
 
 **APIs**
 | Method | Endpoint | Permission |
@@ -281,18 +300,17 @@ Map all FE `CaseRecord` fields (`types.ts`) to columns + indexes on:
 | `DELETE` | `/api/cases?courtId=&category=` (bulk clear) | `cases:delete` |
 
 **Seed**
-- Port `mock-cases.ts` sample rows into seed so demos look full on day one.
+- Port former FE mock register into seed so demos look full on day one.
 
 **Frontend**
-- New `lib/api/cases.ts`
-- Refactor `case-store.tsx` to fetch/mutate via API (React Query preferred)
-- Remove `localStorage` cases as primary store (optional migration: one-time import)
+- `lib/api/cases.ts` + `case-store.tsx` API-backed
+- Removed `mock-cases.ts` / localStorage as primary store
 
-**Agent test**
-- Create/edit/delete/list/filter; staff cannot delete; admin can.
+**Agent verified**
+- `npm run test:cases` → **PASSED**
 
 **Exit criteria**
-- Cases survive browser refresh and work on another laptop after `db:setup`.
+- Cases survive browser refresh and work on another laptop after `db:setup`. ✅
 
 ---
 
@@ -320,85 +338,76 @@ See full matrix in [Section 5](#5-reports-module-role-based-legal-crm-exports).
 
 ---
 
-### Phase 4 — Dashboard analytics API
+### Phase 4 — Dashboard analytics API ✅ IMPLEMENTED
 
-**Objective:** Dashboard numbers/charts from real DB.
+**Status:** Delivered — `GET /api/dashboard/summary` returns live Postgres aggregates: layer/category totals, per-court counts (`byCourt`), last-6-month institute series, upcoming hearings, and month-over-month `trends`. Dashboard cards/charts/court blocks use that payload (plus `/api/reminders`, `/api/notifications`, `/api/courts`). No FE mock series or hardcoded trend values.
 
-**Backend**
-- `GET /api/dashboard/summary`
-  - totals by layer / category / status
-  - upcoming hearings (next N days)
-  - monthly instituted/decided series
-
-**Frontend**
-- Wire `_shell.dashboard.tsx` + `stat-card` data to API.
-- Retire hardcoded `casesByMonth()`.
+**Also in this delivery:** Admin/Super Admin can **Add court** on Internal/External pages (`POST /api/courts`, permission `courts:manage`).
 
 **Exit criteria**
-- Changing a case updates dashboard after reload.
+- Changing a case updates dashboard after reload. ✅
 
 ---
 
-### Phase 5 — Notifications
+### Phase 5 — Reminders + persistent notifications ✅ IMPLEMENTED
 
-**Objective:** Real notification center (not static array).
+**Status:** Two complementary surfaces:
 
-**Backend**
-- Model `Notification` (user_id nullable for global, type, title, body, read_at, meta JSON, case_id optional)
-- Seed generator from cases with near `next_date_of_hearing`
-- APIs:
-  - `GET /api/notifications`
-  - `PATCH /api/notifications/:id/read`
-  - `POST /api/notifications/read-all`
-
-**Frontend**
-- Wire `_shell.notifications.tsx` + topbar dropdown.
-
-**Exit criteria**
-- Hearing reminders appear from DB cases.
+1. **Reminders** — computed from live case data (`nextDateOfHearing`, pending/RO/direction follow-ups) via `GET /api/reminders`. No read state. Active future events remain visible on login and progress through **In 2 days → Tomorrow → Today → Overdue** until the case is completed or its next date is updated. FE: sidebar, topbar clock dropdown, `/reminders` page, filters, dashboard reminder panel, mobile nav.
+2. **Notifications** — per-user Postgres inbox (`Notification` model + `GET/PATCH/POST /api/notifications*`) synced from reminders, with `readAt`, mark-one / mark-all, unread badge, topbar dropdown, `/notifications` page, and register deep links.
 
 ---
 
-### Phase 6 — Settings & module flags
+### Phase 6 — Settings & module flags ✅ IMPLEMENTED
 
-**Objective:** Persist profile + module toggles.
-
-**Backend**
-- `GET/PATCH /api/settings/profile`
-- `POST /api/settings/password`
-- `GET/PATCH /api/settings/modules` (requires `modules:configure`)
-
-**Frontend**
-- Wire `_shell.settings.tsx` forms to API; keep theme local or persist preference.
+**Status:** Delivered — `GET/PATCH /api/settings/profile`, `POST /api/settings/password`, `GET/PATCH /api/settings/modules`. Super Admin only for modules (`modules:configure` revoked from Admin seed). FE Settings wired; sidebar/dashboard honor module flags.
 
 **Exit criteria**
-- Module flags survive refresh; staff cannot change modules.
+- Module flags survive refresh; staff cannot change modules. ✅
 
 ---
 
-### Phase 7 — Hardening, docs, deploy readiness
+### Phase 7 — Hardening, docs, deploy readiness ✅ IN PROGRESS
 
 **Objective:** Production-ready packaging.
 
-- Proper Sequelize migrations (replace `alter: true` for prod)
-- Request validation on all routes
-- Central audit logging (optional)
-- API Postman/Insomnia collection OR expanded `scripts/test-*.js`
-- Dockerfiles (optional) + Railway configs
-- Remove dead code (`dashboard-data.ts` orphan if still unused)
-- Security pass: CORS lock, strong JWT, rate limits, helmet
+**Status:** Formal migration runner + initial schema migration added. Production no longer relies on `alter: true`. Global API rate limit, PGSSL dialect support, JWT strength checks, bulk-delete/court query validation, Railway config + Dockerfile added for BE and FE. Root `SETUP.md` documents portable laptop bootstrap. Reminders remain derived; persistent notifications inbox is also live (see Phase 5).
+
+- Proper Sequelize migrations (replace `alter: true` for prod) ✅ (`src/database/migrator.js` + `migrations/`)
+- `DATABASE_URL` support ✅
+- `db:reset` + `verify:env` ✅
+- Request validation on mutating/list routes ✅ (cases query/pagination/bulk-delete, courts layer query)
+- Central audit logging (optional) — deferred
+- API smoke scripts ✅ (auth/users/courts/cases/reminders/notifications/settings)
+- Dockerfiles + Railway configs ✅ (`CMS_BE` + `CMS_FE`)
+- Portable setup doc ✅ (`SETUP.md`)
+- Security pass: CORS lock, strong JWT, rate limits, helmet ✅ (global + login rate limits)
 
 **Exit criteria**
-- Staging deploy on Railway works; smoke tests green.
+- Staging deploy on Railway works; smoke tests green. (deploy still needs your Railway account)
 
 ---
 
-### Phase 8 — Polish & UAT
+### Phase 8 — Polish & UAT ✅ IN PROGRESS
 
-- Loading/empty/error states on all FE pages
-- Mobile QA for login centering, tables, dialogs
-- Role matrix UAT with you
-- Performance: pagination on cases (`?page=&limit=`)
+**Objective:** UX polish, missing report coverage, docs accuracy, and UAT readiness.
+
+**Status:** Core polish implemented — topbar case search, Pending Hearings / Next Date List export,
+loading/error/empty banners on dashboard / registers / courts / users, assistant CRM copy + live
+counts, and `CMS_FE/README.md` rewritten for IPS/ETPB. Remaining: mobile QA pass with you, and
+formal role-matrix UAT.
+
+- Loading/empty/error states on key FE pages ✅ (dashboard, case register, court overviews, users)
+- Topbar global case search ✅ (filters loaded cases → opens court register)
+- Pending Hearings / Next Date List report ✅ (Dashboard + case register extras)
+- Assistant copy fixed (no CRM “leads/deals”); live counts when signed in ✅
+- Frontend README replaced (scaffold “Verdant Insights” removed) ✅
+- Mobile QA for login centering, tables, dialogs — pending with you
+- Role matrix UAT with you — pending
+- Performance: pagination on cases (`?page=&limit=`) — **implemented and smoke-tested**
+
+**Exit criteria**
+- UAT signed off for Staff / Admin / Super Admin paths; no dead search or missing planned reports.
 
 ---
 
@@ -473,13 +482,14 @@ See [Section 10](#10-how-to-verify-reports-ui-exports).
 | FE route / feature | Replace this | With API |
 | --- | --- | --- |
 | `/` Login | already API | keep; optional remove DEMO prefill later |
-| `/users` | `DEMO_USERS` state | `/api/users` |
-| `/internal`, `/external` | `courts.ts` | `/api/courts` |
-| `/internal/:court/:category` case register | `case-store` localStorage | `/api/cases?...` |
+| `/users` | Postgres directory | `/api/users` |
+| `/internal`, `/external` | DB courts | `/api/courts` |
+| `/internal/:court/:category` case register | API case-store | `/api/cases?...` |
 | `/external/:court/:category` | same | same |
-| `/dashboard` | mock aggregates | `/api/dashboard/summary` |
-| `/notifications` | static list | `/api/notifications` |
-| `/settings` | toast-only | `/api/settings/*` |
+| `/dashboard` | live aggregates + reminders + unread | `/api/dashboard/summary` + `/api/reminders` + `/api/notifications` |
+| `/reminders` | live hearing reminders | `/api/reminders` |
+| `/notifications` | persistent inbox + read state | `/api/notifications` |
+| `/settings` | profile/password/modules | `/api/settings/*` |
 | Permission gates `can()` | already uses API permissions | keep; ensure every mutating API checks server-side too |
 
 **Integration rule:** UI may hide buttons, but **server always enforces** permissions.
@@ -679,17 +689,72 @@ npm run test:auth
 
 ---
 
+### Test 7 — Courts API + UI (Phase 2) ✅
+
+**Automated**
+
+```powershell
+cd CMS_BE
+npm run db:seed   # ensures 12 courts exist
+npm run test:courts
+```
+
+**Expect:** `Phase 2 courts smoke test PASSED` (12 total, 5 internal, 7 external, slug lookup OK, missing → 404).
+
+**Manual API**
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:4000/api/courts"
+Invoke-RestMethod "http://127.0.0.1:4000/api/courts?layer=internal"
+Invoke-RestMethod "http://127.0.0.1:4000/api/courts/federal-secretary"
+```
+
+**Frontend UAT**
+
+1. Ensure BE (`:4000`) and FE (`:3000`) are running.
+2. Login as Admin → **Internal Courts**.
+3. Page description should say **“Courts loaded from database.”** (not “offline court list”).
+4. Confirm 5 court cards; open **Federal Secretary → Decided Cases** (register loads).
+5. Open **External Courts** → 7 cards; open **Supreme Court** → only Restraining + Direction categories.
+6. Optional: stop BE briefly and refresh Internal — should show fallback + warning banner.
+
+---
+
+### Test 8 — Cases + Dashboard (Phase 3–4) ✅
+
+**Automated**
+
+```powershell
+cd CMS_BE
+npm run db:seed
+npm run test:cases
+```
+
+**Expect:** `Phase 3 cases + dashboard + court-create smoke test PASSED`
+
+**Frontend UAT**
+
+1. Logout and login again as Admin (refreshes `courts:manage` permission).
+2. Dashboard header should say **Live database: N cases** (N ≈ 140 after seed).
+3. Charts / stat cards should match DB (not fixed fake trends).
+4. Open Federal Secretary → Decided Cases — rows from DB; add/edit/delete persists after refresh.
+5. Internal / External → **Add court** → create a court → it appears in the grid.
+6. Staff cannot add courts or delete cases.
+
+---
+
 ### Future API tests (after each phase)
 
 As APIs are added, agent will extend scripts:
 
 | Phase | Script / checks |
 | --- | --- |
-| Phase 1 | `test:users.js` — list/create/status + staff forbidden |
-| Phase 2 | `test:courts.js` — layers/categories match seed |
-| Phase 3 | `test:cases.js` — CRUD + filters + permissions |
-| Phase 4 | `test:dashboard.js` — summary shape |
-| Phase 5–6 | notifications/settings scripts |
+| Phase 1 | `test:users.js` — list/create/status + staff forbidden ✅ |
+| Phase 2 | `test:courts.js` — layers/categories match seed ✅ |
+| Phase 3 | `test:cases.js` — CRUD + filters + permissions + dashboard + court create ✅ |
+| Phase 4 | covered in `test:cases.js` (`/dashboard/summary`) ✅ |
+| Phase 5 | `test:reminders.js` + `test:notifications.js` ✅ |
+| Phase 6 | `test:settings.js` |
 
 Also verify with JWT of each role after every mutating endpoint.
 
@@ -779,7 +844,7 @@ Phase 3 (Cases) is the largest; everything CRM-critical depends on it.
 
 ### Definition of “full functional”
 
-1. Auth, users, courts, cases, dashboard, notifications, settings all use Postgres via API.
+1. Auth, users, courts, cases, dashboard, settings, reminders, and notifications all use Postgres via API. Reminders are derived from case next dates; the notifications inbox stores per-user read state.
 2. New laptop: clone + Postgres + `db:setup` + env → full demo without any DB backup file.
 3. Permissions enforced on server.
 4. Deploy path documented and smoke-tested (Railway and/or Cloudflare hybrid).
@@ -803,20 +868,27 @@ PATCH  /api/users/:id
 PATCH  /api/users/:id/status
 
 # Courts (Phase 2)
-GET /api/courts
-GET /api/courts/:id
+GET   /api/courts
+GET   /api/courts/:id
+POST  /api/courts
+PATCH /api/courts/:id
 
 # Cases (Phase 3)
-GET    /api/cases
+GET    /api/cases?layer=&courtId=&category=&q=&page=&limit=
 GET    /api/cases/:id
 POST   /api/cases
 PATCH  /api/cases/:id
 DELETE /api/cases/:id
+DELETE /api/cases            (bulk ids or courtId+category)
 
 # Dashboard (Phase 4)
 GET /api/dashboard/summary
+  → total, byLayer, byCategory, byCourt, monthly[6], upcomingHearings, trends, categorySplit
 
-# Notifications (Phase 5)
+# Reminders (Phase 5 — derived live alerts)
+GET /api/reminders?daysAhead=&limit=
+
+# Notifications (Phase 5 — persistent per-user inbox)
 GET   /api/notifications
 PATCH /api/notifications/:id/read
 POST  /api/notifications/read-all
@@ -829,14 +901,16 @@ GET   /api/settings/modules
 PATCH /api/settings/modules
 ```
 
+> Phase 5 delivers **both** live reminders (no read state) and a persistent notifications inbox (with `readAt`). The inbox is synced from reminder-worthy case dates.
+
 ---
 
 ## Appendix B — Immediate next action
 
-When you say **“start Phase 0”** or **“start Phase 1”**, implementation begins in that order:
+Remaining out-of-band items:
 
-1. Portable DB bootstrap improvements (if not already enough)
-2. Users API + FE Users page integration
-3. Then courts → cases → dashboard → notifications → settings → Railway
+1. Role-matrix UAT with you (Staff / Admin / Super Admin)
+2. Mobile QA pass (login, tables, dialogs)
+3. Railway staging deploy (needs your Railway account + FE host choice)
 
 Until then, this document is the single source of truth for scope, portable DB strategy, Railway options, what you must provide, and how to verify APIs.

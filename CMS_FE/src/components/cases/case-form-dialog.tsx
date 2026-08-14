@@ -154,7 +154,9 @@ export function CaseFormDialog({
   court: CourtDefinition;
   category: CaseCategory;
   initial?: CaseRecord | null;
-  onSubmit: (values: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number }) => void;
+  onSubmit: (
+    values: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number },
+  ) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState("");
@@ -212,7 +214,7 @@ export function CaseFormDialog({
     setStep((s) => Math.max(s - 1, 0));
   }
 
-  function handleSave() {
+  async function handleSave() {
     for (let i = 0; i < STEPS.length; i++) {
       const message = validateStep(i);
       if (message) {
@@ -221,21 +223,25 @@ export function CaseFormDialog({
         return;
       }
     }
-    onSubmit({
-      ...(mode === "edit" && initial ? { id: initial.id, srNo: initial.srNo } : {}),
-      ...form,
-      caseCategory: category,
-      nameOfCourt: court.name,
-      courtId: court.id,
-      layer: court.layer,
-    });
-    onOpenChange(false);
+    try {
+      await onSubmit({
+        ...(mode === "edit" && initial ? { id: initial.id, srNo: initial.srNo } : {}),
+        ...form,
+        caseCategory: category,
+        nameOfCourt: court.name,
+        courtId: court.id,
+        layer: court.layer,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save case");
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="case-form-modal flex max-h-[92vh] w-[min(44rem,calc(100vw-1.5rem))] max-w-4xl flex-col gap-0 overflow-hidden border border-border bg-muted/30 p-0 shadow-2xl sm:rounded-xl">
-        <DialogHeader className="space-y-0 border-b border-border bg-card px-5 pb-4 pt-5 pr-12 text-left">
+      <DialogContent className="case-form-modal flex max-h-[92vh] w-[min(44rem,calc(100vw-1.5rem))] max-w-4xl flex-col gap-0 overflow-hidden border border-emerald-950/15 bg-[#f3f6f4] p-0 shadow-2xl dark:border-emerald-100/10 dark:bg-[#101813] sm:rounded-xl">
+        <DialogHeader className="space-y-0 border-b border-emerald-950/10 bg-white px-5 pb-4 pt-5 pr-12 text-left dark:border-emerald-100/10 dark:bg-[#17211b]">
           <DialogTitle className="text-base font-bold tracking-tight text-foreground sm:text-lg">
             {title}
           </DialogTitle>
@@ -273,8 +279,8 @@ export function CaseFormDialog({
                       className={cn(
                         "flex w-full items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left transition-colors",
                         active && "border-primary/35 bg-primary-soft/60",
-                        done && "border-border bg-card",
-                        !active && !done && "border-transparent bg-muted/80 text-muted-foreground",
+                        done && "border-border bg-white dark:bg-[#1b2720]",
+                        !active && !done && "border-transparent bg-[#e6eee9] text-muted-foreground dark:bg-[#1b2720]",
                       )}
                     >
                       <span
@@ -303,8 +309,8 @@ export function CaseFormDialog({
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <div className="mb-4 rounded-lg border border-border bg-card px-3.5 py-3 shadow-sm">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f3f6f4] px-5 py-4 dark:bg-[#101813]">
+          <div className="mb-4 rounded-lg border border-emerald-950/10 bg-white px-3.5 py-3 shadow-sm dark:border-emerald-100/10 dark:bg-[#17211b]">
             <p className="text-[11px] font-bold uppercase tracking-wide text-foreground">{current.title}</p>
             <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{current.subtitle}</p>
           </div>
@@ -338,7 +344,7 @@ export function CaseFormDialog({
                   type="text"
                   value={form[field.key]}
                   onChange={(e) => setField(field.key, e.target.value)}
-                  className="h-10 rounded-lg border-border bg-card text-foreground shadow-none focus-visible:border-primary focus-visible:ring-primary/25"
+                  className="h-10 rounded-lg border-emerald-950/15 bg-white text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/25 dark:border-emerald-100/15 dark:bg-[#17211b]"
                 />
               </div>
             ))}
@@ -347,7 +353,7 @@ export function CaseFormDialog({
           {error ? <p className="mt-3 text-xs font-medium text-destructive">{error}</p> : null}
         </div>
 
-        <DialogFooter className="gap-2 border-t border-border bg-card px-5 py-3.5 sm:justify-between">
+        <DialogFooter className="gap-2 border-t border-emerald-950/10 bg-white px-5 py-3.5 dark:border-emerald-100/10 dark:bg-[#17211b] sm:justify-between">
           <p className="hidden max-w-[16rem] text-[11px] leading-snug text-muted-foreground sm:block">
             (1) Sr. No. is assigned automatically. (4) Category and (10) Court stay locked to this register.
           </p>
@@ -355,13 +361,18 @@ export function CaseFormDialog({
             <Button
               type="button"
               variant="outline"
-              className="rounded-full border-border bg-card"
+              className="rounded-full border-emerald-950/15 bg-white dark:border-emerald-100/15 dark:bg-[#17211b]"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
             {step > 0 ? (
-              <Button type="button" variant="outline" className="rounded-full border-border bg-card" onClick={goBack}>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full border-emerald-950/15 bg-white dark:border-emerald-100/15 dark:bg-[#17211b]"
+                onClick={goBack}
+              >
                 <ChevronLeft className="size-4" />
                 Back
               </Button>
@@ -403,7 +414,7 @@ function LockedField({
   return (
     <div className={cn("space-y-1.5", className)}>
       <Label className="text-xs font-semibold text-foreground/80">{label}</Label>
-      <div className="flex h-10 items-center rounded-lg border border-dashed border-border bg-muted px-3 text-sm font-medium text-foreground">
+      <div className="flex h-10 items-center rounded-lg border border-emerald-950/15 bg-[#e5f0e9] px-3 text-sm font-medium text-foreground dark:border-emerald-100/15 dark:bg-[#1b2a21]">
         {value}
       </div>
     </div>

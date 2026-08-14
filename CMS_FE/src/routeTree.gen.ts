@@ -12,7 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as ShellDashboardRouteImport } from './routes/_shell.dashboard'
-import { Route as ShellNotificationsRouteImport } from './routes/_shell.notifications'
+import { Route as ShellNotificationsRouteImport } from './routes/_shell.notifications_'
+import { Route as ShellRemindersRouteImport } from './routes/_shell.reminders'
 import { Route as ShellSettingsRouteImport } from './routes/_shell.settings'
 import { Route as ShellUsersRouteImport } from './routes/_shell.users'
 import { Route as ShellExternalIndexRouteImport } from './routes/_shell.external.index'
@@ -35,8 +36,13 @@ const ShellDashboardRoute = ShellDashboardRouteImport.update({
   getParentRoute: () => ShellRoute,
 } as any)
 const ShellNotificationsRoute = ShellNotificationsRouteImport.update({
-  id: '/notifications',
+  id: '/notifications_',
   path: '/notifications',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellRemindersRoute = ShellRemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
   getParentRoute: () => ShellRoute,
 } as any)
 const ShellSettingsRoute = ShellSettingsRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof ShellDashboardRoute
   '/notifications': typeof ShellNotificationsRoute
+  '/reminders': typeof ShellRemindersRoute
   '/settings': typeof ShellSettingsRoute
   '/users': typeof ShellUsersRoute
   '/external/': typeof ShellExternalIndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof ShellDashboardRoute
   '/notifications': typeof ShellNotificationsRoute
+  '/reminders': typeof ShellRemindersRoute
   '/settings': typeof ShellSettingsRoute
   '/users': typeof ShellUsersRoute
   '/external': typeof ShellExternalIndexRoute
@@ -99,7 +107,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_shell': typeof ShellRouteWithChildren
   '/_shell/dashboard': typeof ShellDashboardRoute
-  '/_shell/notifications': typeof ShellNotificationsRoute
+  '/_shell/notifications_': typeof ShellNotificationsRoute
+  '/_shell/reminders': typeof ShellRemindersRoute
   '/_shell/settings': typeof ShellSettingsRoute
   '/_shell/users': typeof ShellUsersRoute
   '/_shell/external/': typeof ShellExternalIndexRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/notifications'
+    | '/reminders'
     | '/settings'
     | '/users'
     | '/external/'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/notifications'
+    | '/reminders'
     | '/settings'
     | '/users'
     | '/external'
@@ -135,7 +146,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_shell'
     | '/_shell/dashboard'
-    | '/_shell/notifications'
+    | '/_shell/notifications_'
+    | '/_shell/reminders'
     | '/_shell/settings'
     | '/_shell/users'
     | '/_shell/external/'
@@ -172,11 +184,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellDashboardRouteImport
       parentRoute: typeof ShellRoute
     }
-    '/_shell/notifications': {
-      id: '/_shell/notifications'
+    '/_shell/notifications_': {
+      id: '/_shell/notifications_'
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof ShellNotificationsRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/reminders': {
+      id: '/_shell/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof ShellRemindersRouteImport
       parentRoute: typeof ShellRoute
     }
     '/_shell/settings': {
@@ -227,6 +246,7 @@ declare module '@tanstack/react-router' {
 interface ShellRouteChildren {
   ShellDashboardRoute: typeof ShellDashboardRoute
   ShellNotificationsRoute: typeof ShellNotificationsRoute
+  ShellRemindersRoute: typeof ShellRemindersRoute
   ShellSettingsRoute: typeof ShellSettingsRoute
   ShellUsersRoute: typeof ShellUsersRoute
   ShellExternalIndexRoute: typeof ShellExternalIndexRoute
@@ -238,6 +258,7 @@ interface ShellRouteChildren {
 const ShellRouteChildren: ShellRouteChildren = {
   ShellDashboardRoute: ShellDashboardRoute,
   ShellNotificationsRoute: ShellNotificationsRoute,
+  ShellRemindersRoute: ShellRemindersRoute,
   ShellSettingsRoute: ShellSettingsRoute,
   ShellUsersRoute: ShellUsersRoute,
   ShellExternalIndexRoute: ShellExternalIndexRoute,

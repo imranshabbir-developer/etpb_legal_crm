@@ -1,6 +1,21 @@
 require("dotenv").config();
 
-const required = ["POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "JWT_SECRET"];
+function parseDatabaseUrl(url) {
+  const parsed = new URL(url);
+  return {
+    dialect: "postgres",
+    database: parsed.pathname.replace(/^\//, ""),
+    username: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432),
+  };
+}
+
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const required = hasDatabaseUrl
+  ? ["JWT_SECRET"]
+  : ["POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "JWT_SECRET"];
 
 for (const key of required) {
   if (!process.env[key]) {
@@ -8,12 +23,14 @@ for (const key of required) {
   }
 }
 
+const dbFromUrl = hasDatabaseUrl ? parseDatabaseUrl(process.env.DATABASE_URL) : null;
+
 const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 4000),
   apiPrefix: process.env.API_PREFIX || "/api",
   corsOrigin: process.env.CORS_ORIGIN || "http://localhost:3000",
-  db: {
+  db: dbFromUrl || {
     dialect: process.env.DB_ENGINE || "postgres",
     database: process.env.POSTGRES_DB,
     username: process.env.POSTGRES_USER,
@@ -25,6 +42,11 @@ const env = {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || "8h",
   },
+  pgSsl: process.env.PGSSL === "true",
 };
+
+if (env.nodeEnv === "production" && String(env.jwt.secret).length < 24) {
+  throw new Error("JWT_SECRET must be at least 24 characters in production");
+}
 
 module.exports = { env };

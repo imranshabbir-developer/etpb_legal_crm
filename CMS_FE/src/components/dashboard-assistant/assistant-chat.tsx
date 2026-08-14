@@ -8,7 +8,9 @@ import {
   createMessage,
   getAssistantReply,
   type AssistantMessage,
+  type AssistantContext,
 } from "@/lib/assistant-responses";
+import { useCaseStore } from "@/lib/cases/case-store";
 import { cn } from "@/lib/utils";
 
 type AssistantChatProps = {
@@ -19,18 +21,32 @@ type AssistantChatProps = {
 
 const introMessages = {
   login:
-    "IPS-7 online. Welcome to IPS CRM.\nAsk me about platform features, sign-in, or preview dashboard metrics before you log in.",
+    "IPS-7 online. Welcome to IPS Legal CRM.\nAsk me about courts, case categories, reminders, roles, or how to sign in.",
   dashboard:
-    "IPS-7 online. Welcome back, operator.\nI can analyze leads, deals, channels, and weekly stats from your dashboard.",
+    "IPS-7 online. Welcome back.\nI can explain live case totals, internal vs external courts, reminders, and role permissions.",
 };
 
 export function AssistantChat({ open, onClose, variant = "dashboard" }: AssistantChatProps) {
+  const { cases, countByLayer, countByCategory, ready } = useCaseStore();
   const [messages, setMessages] = useState<AssistantMessage[]>([
     createMessage("bot", introMessages[variant]),
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const context: AssistantContext | undefined =
+    variant === "dashboard" && ready
+      ? {
+          total: cases.length,
+          internal: countByLayer("internal"),
+          external: countByLayer("external"),
+          pending: countByCategory("pending-cases"),
+          decided: countByCategory("decided-cases"),
+          restraining: countByCategory("restraining-order"),
+          direction: countByCategory("direction-cases"),
+        }
+      : undefined;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,7 +61,7 @@ export function AssistantChat({ open, onClose, variant = "dashboard" }: Assistan
     setTyping(true);
 
     window.setTimeout(() => {
-      setMessages((prev) => [...prev, createMessage("bot", getAssistantReply(trimmed))]);
+      setMessages((prev) => [...prev, createMessage("bot", getAssistantReply(trimmed, context))]);
       setTyping(false);
     }, 650 + Math.min(trimmed.length * 12, 900));
   };
@@ -128,7 +144,7 @@ export function AssistantChat({ open, onClose, variant = "dashboard" }: Assistan
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about leads, deals, channels..."
+          placeholder="Ask about courts, cases, reminders…"
           className="assistant-chat-input"
           disabled={typing}
         />

@@ -9,8 +9,19 @@
     "db:migrate": "node src/database/migrate.js",
     "db:seed": "node src/database/seed.js",
     "db:setup": "node src/database/migrate.js && node src/database/seed.js",
+    "db:reset": "node src/database/reset.js && node src/database/seed.js",
+    "verify:env": "node scripts/verify-env.js",
     "test:auth": "node scripts/test-auth.js",
-    "test:users": "node scripts/test-users.js"
+    "test:users": "node scripts/test-users.js",
+    "test:courts": "node scripts/test-courts.js",
+    "test:cases": "node scripts/test-cases.js",
+    "test:reminders": "node scripts/test-reminders.js",
+    "test:notifications": "node scripts/test-notifications.js",
+    "test:settings": "node scripts/test-settings.js",
+    "test:e2e": "node scripts/test-e2e.js",
+    "test:smoke": "node scripts/test-auth.js && node scripts/test-users.js && node scripts/test-courts.js && node scripts/test-cases.js && node scripts/test-reminders.js && node scripts/test-notifications.js && node scripts/test-settings.js",
+    "test:all": "npm run test:smoke && npm run test:e2e",
+    "cleanup:smoke": "node scripts/cleanup-smoke.js"
   },
   "engines": {
     "node": ">=18"

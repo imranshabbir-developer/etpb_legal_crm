@@ -9,63 +9,72 @@ import {
   type ReactNode,
 } from "react";
 
-import { mockCases } from "@/lib/cases/mock-cases";
+import {
+  clearCourtCategoryApi,
+  createCaseApi,
+  deleteCaseApi,
+  deleteCasesApi,
+  fetchAllCases,
+  updateCaseApi,
+} from "@/lib/api/cases";
+import { useAuth } from "@/lib/cases/auth-context";
 import type { CaseCategory, CaseRecord, CourtLayer } from "@/lib/cases/types";
-
-const STORAGE_KEY = "ips.cases.v1";
 
 type CaseStoreValue = {
   cases: CaseRecord[];
   ready: boolean;
+  fromApi: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
   getForCourtCategory: (courtId: string, category: CaseCategory) => CaseRecord[];
   countForCourt: (courtId: string, category?: CaseCategory) => number;
   countByLayer: (layer: CourtLayer) => number;
   countByCategory: (category: CaseCategory) => number;
-  addCase: (record: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number }) => CaseRecord;
-  updateCase: (id: string, patch: Partial<CaseRecord>) => CaseRecord | null;
-  deleteCase: (id: string) => void;
-  deleteCases: (ids: string[]) => void;
-  clearCourtCategory: (courtId: string, category: CaseCategory) => number;
-  resetToSeed: () => void;
+  addCase: (
+    record: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number },
+  ) => Promise<CaseRecord>;
+  updateCase: (id: string, patch: Partial<CaseRecord>) => Promise<CaseRecord | null>;
+  deleteCase: (id: string) => Promise<void>;
+  deleteCases: (ids: string[]) => Promise<void>;
+  clearCourtCategory: (courtId: string, category: CaseCategory) => Promise<number>;
 };
 
 const CaseStoreContext = createContext<CaseStoreValue | null>(null);
 
-function loadCases(): CaseRecord[] {
-  if (typeof window === "undefined") return mockCases;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(mockCases);
-    const parsed = JSON.parse(raw) as CaseRecord[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return structuredClone(mockCases);
-    return parsed;
-  } catch {
-    return structuredClone(mockCases);
-  }
-}
-
-function persist(cases: CaseRecord[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
-}
-
-function nextSrNo(cases: CaseRecord[]) {
-  return cases.reduce((max, row) => Math.max(max, row.srNo), 0) + 1;
-}
-
 export function CaseProvider({ children }: { children: ReactNode }) {
-  const [cases, setCases] = useState<CaseRecord[]>(mockCases);
+  const { token, ready: authReady } = useAuth();
+  const [cases, setCases] = useState<CaseRecord[]>([]);
   const [ready, setReady] = useState(false);
+  const [fromApi, setFromApi] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!token) {
+      setCases([]);
+      setFromApi(false);
+      setError(null);
+      setReady(true);
+      return;
+    }
+
+    try {
+      setError(null);
+      const data = await fetchAllCases(token);
+      setCases(data);
+      setFromApi(true);
+    } catch (err) {
+      setFromApi(false);
+      setError(err instanceof Error ? err.message : "Failed to load cases");
+      setCases([]);
+    } finally {
+      setReady(true);
+    }
+  }, [token]);
 
   useEffect(() => {
-    setCases(loadCases());
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    persist(cases);
-  }, [cases, ready]);
+    if (!authReady) return;
+    void reload();
+  }, [authReady, reload]);
 
   const getForCourtCategory = useCallback(
     (courtId: string, category: CaseCategory) =>
@@ -91,57 +100,63 @@ export function CaseProvider({ children }: { children: ReactNode }) {
   );
 
   const addCase = useCallback(
-    (input: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number }) => {
-      const record: CaseRecord = {
-        ...input,
-        id: input.id ?? `case-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        srNo: input.srNo ?? nextSrNo(cases),
-      };
-      setCases((prev) => [...prev, record]);
-      return record;
+    async (input: Omit<CaseRecord, "id" | "srNo"> & { id?: string; srNo?: number }) => {
+      if (!token) throw new Error("Authentication required");
+      const created = await createCaseApi(token, input);
+      setCases((prev) => [...prev, created]);
+      return created;
     },
-    [cases],
+    [token],
   );
 
-  const updateCase = useCallback((id: string, patch: Partial<CaseRecord>) => {
-    let updated: CaseRecord | null = null;
-    setCases((prev) =>
-      prev.map((row) => {
-        if (row.id !== id) return row;
-        updated = { ...row, ...patch, id: row.id };
-        return updated;
-      }),
-    );
-    return updated;
-  }, []);
+  const updateCase = useCallback(
+    async (id: string, patch: Partial<CaseRecord>) => {
+      if (!token) throw new Error("Authentication required");
+      const updated = await updateCaseApi(token, id, patch);
+      setCases((prev) => prev.map((row) => (row.id === id ? updated : row)));
+      return updated;
+    },
+    [token],
+  );
 
-  const deleteCase = useCallback((id: string) => {
-    setCases((prev) => prev.filter((row) => row.id !== id));
-  }, []);
+  const deleteCase = useCallback(
+    async (id: string) => {
+      if (!token) throw new Error("Authentication required");
+      await deleteCaseApi(token, id);
+      setCases((prev) => prev.filter((row) => row.id !== id));
+    },
+    [token],
+  );
 
-  const deleteCases = useCallback((ids: string[]) => {
-    const set = new Set(ids);
-    setCases((prev) => prev.filter((row) => !set.has(row.id)));
-  }, []);
+  const deleteCases = useCallback(
+    async (ids: string[]) => {
+      if (!token) throw new Error("Authentication required");
+      await deleteCasesApi(token, ids);
+      const set = new Set(ids);
+      setCases((prev) => prev.filter((row) => !set.has(row.id)));
+    },
+    [token],
+  );
 
-  const clearCourtCategory = useCallback((courtId: string, category: CaseCategory) => {
-    let removed = 0;
-    setCases((prev) => {
-      const next = prev.filter((row) => !(row.courtId === courtId && row.caseCategory === category));
-      removed = prev.length - next.length;
-      return next;
-    });
-    return removed;
-  }, []);
-
-  const resetToSeed = useCallback(() => {
-    setCases(structuredClone(mockCases));
-  }, []);
+  const clearCourtCategory = useCallback(
+    async (courtId: string, category: CaseCategory) => {
+      if (!token) throw new Error("Authentication required");
+      const result = await clearCourtCategoryApi(token, courtId, category);
+      setCases((prev) =>
+        prev.filter((row) => !(row.courtId === courtId && row.caseCategory === category)),
+      );
+      return result.removed;
+    },
+    [token],
+  );
 
   const value = useMemo<CaseStoreValue>(
     () => ({
       cases,
       ready,
+      fromApi,
+      error,
+      reload,
       getForCourtCategory,
       countForCourt,
       countByLayer: countByLayerFn,
@@ -151,11 +166,13 @@ export function CaseProvider({ children }: { children: ReactNode }) {
       deleteCase,
       deleteCases,
       clearCourtCategory,
-      resetToSeed,
     }),
     [
       cases,
       ready,
+      fromApi,
+      error,
+      reload,
       getForCourtCategory,
       countForCourt,
       countByLayerFn,
@@ -165,7 +182,6 @@ export function CaseProvider({ children }: { children: ReactNode }) {
       deleteCase,
       deleteCases,
       clearCourtCategory,
-      resetToSeed,
     ],
   );
 

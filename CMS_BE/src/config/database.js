@@ -6,6 +6,14 @@ const sequelize = new Sequelize(env.db.database, env.db.username, env.db.passwor
   port: env.db.port,
   dialect: "postgres",
   logging: env.nodeEnv === "development" ? console.log : false,
+  dialectOptions: env.pgSsl
+    ? {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      }
+    : undefined,
   define: {
     underscored: true,
     timestamps: true,

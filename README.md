@@ -1,6 +1,6 @@
 # ETPB Legal CRM
 
-**Evacuee Trust Property Board (ETPB) / IPS Legal Case Management CRM** — a modern web application for tracking legal cases across **internal** and **external** courts, with role-based access, dashboards, notifications, and user management.
+**Evacuee Trust Property Board (ETPB) / IPS Legal Case Management CRM** — a modern web application for tracking legal cases across **internal** and **external** courts, with role-based access, dashboards, hearing reminders, persistent notifications, and user management.
 
 > Application UI lives in `CMS_FE/` (TanStack Start + React). API lives in `CMS_BE/` (Express + Sequelize + PostgreSQL + JWT).
 
@@ -22,7 +22,6 @@ See **[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)** for the full phase-wise roa
 | **External Courts** | Case registers under judicial forums (Supreme Court, High Court, District Court, etc.) |
 | **Case Register** | Full CRUD-style case records: case no., property/land details, counsel, hearings, orders, fees, status |
 | **Users & Roles** | Manage staff/admin users (permission-gated) |
-| **Notifications** | Hearing and case alerts by category |
 | **Settings** | CRM preferences and module configuration (role-gated) |
 | **Assistant** | In-dashboard assistant UI for guided help |
 
@@ -62,7 +61,7 @@ Each court exposes the categories configured for that forum (internal courts typ
 | Role | Capabilities |
 | --- | --- |
 | **Super Admin** | Full access: cases (view/create/edit/delete), users (view + manage staff & admin), settings, module configuration. Cannot manage other Super Admins. |
-| **Admin** | Same operational access as Super Admin for cases, users (staff & admin), settings, and modules. |
+| **Admin** | Same operational access as Super Admin for cases, users (staff & admin), and settings. Cannot change module flags. |
 | **Staff** | View and edit cases; view settings. Cannot create/delete cases or manage users. |
 
 ### Permission matrix
@@ -78,17 +77,15 @@ Each court exposes the categories configured for that forum (internal courts typ
 | `users:manage-admin` | ❌ | ✅ | ✅ |
 | `settings:view` | ✅ | ✅ | ✅ |
 | `settings:manage` | ❌ | ✅ | ✅ |
-| `modules:configure` | ❌ | ✅ | ✅ |
+| `modules:configure` | ❌ | ❌ | ✅ |
 
-### Demo accounts (local development)
+Auth is **JWT against Postgres**. Seeded demo accounts:
 
 | Role | Email | Password |
 | --- | --- | --- |
 | Super Admin | `superadmin@ips.gov.pk` | `SuperAdmin@123` |
 | Admin | `admin@ips.gov.pk` | `Admin@123` |
 | Staff | `staff@ips.gov.pk` | `Staff@123` |
-
-Auth is currently **client-side / demo session** (localStorage). Suitable for UI and workflow demos; wire a real backend auth when moving to production.
 
 ---
 
@@ -220,7 +217,7 @@ git push origin imran-dev
 
 ## Notes
 
-- Auth/roles are **database-backed** (JWT). Case registers still use in-app mock data until case APIs are added.
+- Auth/roles/cases/courts/dashboard/settings/reminders/notifications are **database-backed** (JWT + Postgres). Hearing reminders are computed from case dates; per-user notification read state persists in Postgres. Client PDF/CSV/DOCX reports read live case/user data.
 - Do not commit `.env`, `.dev.vars`, `node_modules`, or build caches (see root `.gitignore`).
 
 ---

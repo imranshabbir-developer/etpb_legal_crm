@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { Pencil, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/topbar";
@@ -25,7 +25,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ApiClientError } from "@/lib/api/client";
-import { createUser, fetchUsers, updateUserStatus, type ApiUser } from "@/lib/api/users";
+import {
+  createUser,
+  fetchUsers,
+  updateUser,
+  updateUserStatus,
+  type ApiUser,
+} from "@/lib/api/users";
 import { useAuth } from "@/lib/cases/auth-context";
 import { canManageRole, ROLE_LABELS } from "@/lib/cases/permissions";
 import { readSession } from "@/lib/cases/session";
@@ -49,8 +55,10 @@ function UsersPage() {
   const { user, can, token } = useAuth();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ApiUser | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("Staff@123");
@@ -65,11 +73,13 @@ function UsersPage() {
   const loadUsers = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchUsers(token);
       setUsers(data);
     } catch (error) {
       const message = error instanceof ApiClientError ? error.message : "Failed to load users";
+      setLoadError(message);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -80,10 +90,28 @@ function UsersPage() {
     void loadUsers();
   }, [loadUsers]);
 
-  async function handleCreate() {
+  function openCreate() {
+    setEditing(null);
+    setName("");
+    setEmail("");
+    setPassword("Staff@123");
+    setRole(roleOptions[0] ?? "staff");
+    setOpen(true);
+  }
+
+  function openEdit(row: ApiUser) {
+    setEditing(row);
+    setName(row.name);
+    setEmail(row.email);
+    setPassword("");
+    setRole(row.role);
+    setOpen(true);
+  }
+
+  async function handleSave() {
     if (!token) return;
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      toast.error("Name, email and password are required");
+    if (!name.trim() || !email.trim() || (!editing && !password.trim())) {
+      toast.error(editing ? "Name and email are required" : "Name, email and password are required");
       return;
     }
     if (role !== "admin" && role !== "staff") {
@@ -93,21 +121,37 @@ function UsersPage() {
 
     setSaving(true);
     try {
-      const created = await createUser(token, {
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        role,
-        status: "Active",
-      });
-      setUsers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      if (editing) {
+        const updated = await updateUser(token, editing.id, {
+          name: name.trim(),
+          email: email.trim(),
+          role: role as "admin" | "staff",
+          ...(password.trim() ? { password } : {}),
+        });
+        setUsers((prev) =>
+          prev
+            .map((row) => (row.id === editing.id ? updated : row))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        );
+        toast.success("User updated in database");
+      } else {
+        const created = await createUser(token, {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role: role as "admin" | "staff",
+          status: "Active",
+        });
+        setUsers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        toast.success("User created in database");
+      }
       setName("");
       setEmail("");
       setPassword("Staff@123");
+      setEditing(null);
       setOpen(false);
-      toast.success("User created in database");
     } catch (error) {
-      const message = error instanceof ApiClientError ? error.message : "Could not create user";
+      const message = error instanceof ApiClientError ? error.message : "Could not save user";
       toast.error(message);
     } finally {
       setSaving(false);
@@ -147,10 +191,7 @@ function UsersPage() {
             {can("users:manage-staff") || can("users:manage-admin") ? (
               <Button
                 className="rounded-full bg-brand-gradient font-semibold"
-                onClick={() => {
-                  setRole(roleOptions[0] ?? "staff");
-                  setOpen(true);
-                }}
+                onClick={openCreate}
               >
                 <Plus className="size-4" />
                 Add user
@@ -159,6 +200,12 @@ function UsersPage() {
           </div>
         }
       />
+
+      {loadError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Could not load users ({loadError}). Check the API connection, then refresh.
+        </p>
+      ) : null}
 
       {can("users:view") ? (
         <ReportExportBar
@@ -197,6 +244,12 @@ function UsersPage() {
                     Loading users from database...
                   </TableCell>
                 </TableRow>
+              ) : loadError ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-destructive">
+                    Failed to load users from the database.
+                  </TableCell>
+                </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
@@ -217,14 +270,25 @@ function UsersPage() {
                       <TableCell>{row.status}</TableCell>
                       <TableCell className="text-right">
                         {manageable ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-full"
-                            onClick={() => void handleToggleStatus(row)}
-                          >
-                            Toggle status
-                          </Button>
+                          <div className="inline-flex flex-wrap justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full"
+                              onClick={() => openEdit(row)}
+                            >
+                              <Pencil className="size-3.5" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full"
+                              onClick={() => void handleToggleStatus(row)}
+                            >
+                              Toggle status
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
@@ -238,30 +302,10 @@ function UsersPage() {
         </div>
       </Panel>
 
-      {can("modules:configure") ? (
-        <Panel title="Super Admin — module controls">
-          <p className="text-sm text-muted-foreground">
-            Ultimate access: configure future dashboard views/modules for the CRM Management System without
-            changing the existing theme.
-          </p>
-          <Button
-            className="mt-3 rounded-full"
-            variant="outline"
-            onClick={() =>
-              toast.message("Module configuration", {
-                description: "Placeholder for adding new dashboard functions/views.",
-              })
-            }
-          >
-            Configure modules
-          </Button>
-        </Panel>
-      ) : null}
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-border bg-card sm:rounded-xl">
           <DialogHeader className="pr-8 text-left">
-            <DialogTitle className="text-foreground">Add user</DialogTitle>
+            <DialogTitle className="text-foreground">{editing ? "Edit user" : "Add user"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -289,7 +333,7 @@ function UsersPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-xs font-semibold text-foreground/80">
-                Temporary password
+                {editing ? "New password (optional)" : "Temporary password"}
               </Label>
               <Input
                 id="password"
@@ -328,10 +372,10 @@ function UsersPage() {
             </Button>
             <Button
               className="bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
-              onClick={() => void handleCreate()}
+              onClick={() => void handleSave()}
               disabled={saving}
             >
-              {saving ? "Saving..." : "Save to database"}
+              {saving ? "Saving..." : editing ? "Update user" : "Save to database"}
             </Button>
           </DialogFooter>
         </DialogContent>

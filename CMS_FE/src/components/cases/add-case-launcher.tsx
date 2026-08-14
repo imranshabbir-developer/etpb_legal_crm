@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,12 +16,10 @@ import { useAuth } from "@/lib/cases/auth-context";
 import { useCaseStore } from "@/lib/cases/case-store";
 import {
   CASE_CATEGORY_LABELS,
-  EXTERNAL_COURTS,
-  INTERNAL_COURTS,
   formatCourtLabel,
-  getCourtById,
 } from "@/lib/cases/courts";
-import type { CaseCategory, CourtLayer } from "@/lib/cases/types";
+import { useCourts } from "@/lib/cases/use-courts";
+import type { CaseCategory, CourtDefinition, CourtLayer } from "@/lib/cases/types";
 import { cn } from "@/lib/utils";
 
 type AddCaseLauncherProps = {
@@ -50,21 +48,45 @@ export function AddCaseLauncher({
 }: AddCaseLauncherProps) {
   const { can } = useAuth();
   const { addCase } = useCaseStore();
+  const { internal, external } = useCourts();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [layer, setLayer] = useState<CourtLayer>(defaultLayer);
-  const courts = layer === "internal" ? INTERNAL_COURTS : EXTERNAL_COURTS;
-  const [courtId, setCourtId] = useState(presetCourtId ?? courts[0]!.id);
-  const selectedCourt = useMemo(() => getCourtById(courtId) ?? courts[0]!, [courtId, courts]);
-  const [category, setCategory] = useState<CaseCategory>(
-    presetCategory ?? selectedCourt.categories[0]!,
+
+  const internalList = internal;
+  const externalList = external;
+  const courts = layer === "internal" ? internalList : externalList;
+
+  const [courtId, setCourtId] = useState(presetCourtId ?? "");
+
+  const selectedCourt = useMemo(
+    () => courts.find((c) => c.id === courtId) ?? courts[0],
+    [courtId, courts],
   );
+  const [category, setCategory] = useState<CaseCategory>(
+    presetCategory ?? "decided-cases",
+  );
+
+  useEffect(() => {
+    if (!selectedCourt) return;
+    if (!courtId) setCourtId(selectedCourt.id);
+    if (!selectedCourt.categories.includes(category)) {
+      setCategory(selectedCourt.categories[0]!);
+    }
+  }, [category, courtId, selectedCourt]);
+
+  function findCourt(
+    id: string,
+    list: CourtDefinition[] = [...internalList, ...externalList],
+  ) {
+    return list.find((c) => c.id === id);
+  }
 
   if (!can("cases:create")) return null;
 
   function openFlow() {
     if (presetCourtId && presetCategory) {
-      const court = getCourtById(presetCourtId);
+      const court = findCourt(presetCourtId);
       if (court) {
         setLayer(court.layer);
         setCourtId(court.id);
@@ -74,14 +96,18 @@ export function AddCaseLauncher({
       }
     }
     setLayer(defaultLayer);
-    const list = defaultLayer === "internal" ? INTERNAL_COURTS : EXTERNAL_COURTS;
-    setCourtId(list[0]!.id);
-    setCategory(list[0]!.categories[0]!);
+    const list = defaultLayer === "internal" ? internalList : externalList;
+    if (!list.length) {
+      toast.error("No active courts are available from the database");
+      return;
+    }
+    setCourtId(list[0].id);
+    setCategory(list[0].categories[0]!);
     setPickerOpen(true);
   }
 
   function continueToForm() {
-    const court = getCourtById(courtId);
+    const court = findCourt(courtId, courts);
     if (!court || !court.categories.includes(category)) {
       toast.error("Choose a valid court and category");
       return;
@@ -125,9 +151,9 @@ export function AddCaseLauncher({
                 onChange={(e) => {
                   const next = e.target.value as CourtLayer;
                   setLayer(next);
-                  const list = next === "internal" ? INTERNAL_COURTS : EXTERNAL_COURTS;
-                  setCourtId(list[0]!.id);
-                  setCategory(list[0]!.categories[0]!);
+                  const list = next === "internal" ? internalList : externalList;
+                  setCourtId(list[0]?.id ?? "");
+                  if (list[0]) setCategory(list[0].categories[0]!);
                 }}
               >
                 <option value="internal">Internal Courts</option>
@@ -143,7 +169,7 @@ export function AddCaseLauncher({
                 onChange={(e) => {
                   const id = e.target.value;
                   setCourtId(id);
-                  const court = getCourtById(id);
+                  const court = findCourt(id, courts);
                   if (court) setCategory(court.categories[0]!);
                 }}
               >
@@ -156,13 +182,13 @@ export function AddCaseLauncher({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground/80">Case category</Label>
+              <Label className="text-xs font-semibold text-foreground/80">Category</Label>
               <select
                 className="flex h-10 w-full rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/25"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as CaseCategory)}
               >
-                {selectedCourt.categories.map((cat) => (
+                {(selectedCourt?.categories ?? []).map((cat) => (
                   <option key={cat} value={cat}>
                     {CASE_CATEGORY_LABELS[cat]}
                   </option>
@@ -171,38 +197,32 @@ export function AddCaseLauncher({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full border-border bg-card text-foreground"
-              onClick={() => setPickerOpen(false)}
-            >
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setPickerOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              className="rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
-              onClick={continueToForm}
-            >
-              Continue to form
+            <Button type="button" className="rounded-full bg-brand-gradient font-semibold" onClick={continueToForm}>
+              Continue
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {formOpen && selectedCourt ? (
+      {selectedCourt ? (
         <CaseFormDialog
           open={formOpen}
           onOpenChange={setFormOpen}
           mode="create"
           court={selectedCourt}
           category={category}
-          onSubmit={(values) => {
-            const created = addCase(values);
-            toast.success(`Added ${created.caseNo}`, {
-              description: `${formatCourtLabel(selectedCourt.name)} · ${CASE_CATEGORY_LABELS[category]}`,
-            });
+          onSubmit={async (payload) => {
+            try {
+              await addCase(payload);
+              toast.success("Case added");
+              setFormOpen(false);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Failed to add case");
+            }
           }}
         />
       ) : null}

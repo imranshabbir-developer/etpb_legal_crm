@@ -223,3 +223,63 @@ export function buildExecutivePackReport(
     fileBaseName: safeName(["ETPB_Executive_Board_Pack", new Date().toISOString().slice(0, 10)]),
   };
 }
+
+function isValidHearingDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+}
+
+function todayKey() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Pending Hearings / Next Date List — upcoming & overdue dated hearings from live cases. */
+export function buildPendingHearingsReport(
+  cases: CaseRecord[],
+  user: SessionUser | null,
+  options?: { courtName?: string; category?: CaseCategory },
+): ReportPayload {
+  const today = todayKey();
+  const dated = cases
+    .filter((c) => isValidHearingDate(c.nextDateOfHearing))
+    .filter((c) => {
+      const status = String(c.caseStatus || "").toLowerCase();
+      if (status.includes("disposed") || status.includes("closed")) return false;
+      return true;
+    })
+    .sort((a, b) => a.nextDateOfHearing.localeCompare(b.nextDateOfHearing));
+
+  const overdue = dated.filter((c) => c.nextDateOfHearing < today).length;
+  const upcoming = dated.filter((c) => c.nextDateOfHearing >= today).length;
+
+  return {
+    meta: {
+      title: "Pending Hearings / Next Date List",
+      officeOrCourt: options?.courtName
+        ? formatCourtLabel(options.courtName)
+        : "ETPB Head Office — Legal Wing",
+      fileRef: "ETPB/LGL/CRM/HEARINGS-NEXT",
+      ...stamp(user),
+    },
+    summaryLines: [
+      { label: "Dated hearings", value: String(dated.length) },
+      { label: "Overdue", value: String(overdue) },
+      { label: "Upcoming / today", value: String(upcoming) },
+      ...(options?.category
+        ? [{ label: "Category filter", value: CASE_CATEGORY_LABELS[options.category] }]
+        : []),
+    ],
+    table: {
+      columns: CASE_COLUMNS,
+      rows: caseRows(dated),
+    },
+    fileBaseName: safeName([
+      "ETPB_Pending_Hearings",
+      options?.courtName || "All",
+      new Date().toISOString().slice(0, 10),
+    ]),
+  };
+}

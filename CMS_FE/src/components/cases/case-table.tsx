@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react";
 
 import { CaseCategoryBadge } from "@/components/cases/case-category-badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ const LIST_COLUMNS = CASE_COLUMNS.filter((col) =>
   (LIST_KEYS as readonly string[]).includes(col.key),
 );
 
+const PAGE_SIZE = 10;
+
 type CaseTableProps = {
   cases: CaseRecord[];
   canEdit?: boolean;
@@ -61,6 +63,7 @@ export function CaseTable({
   onDelete,
 }: CaseTableProps) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -83,17 +86,31 @@ export function CaseTable({
     );
   }, [cases, query]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, cases.length]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
   const allFilteredSelected =
-    filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
+    pageRows.length > 0 && pageRows.every((row) => selectedIds.includes(row.id));
 
   function toggleAll(checked: boolean) {
     if (!onSelectionChange) return;
     if (checked) {
-      const merged = new Set([...selectedIds, ...filtered.map((r) => r.id)]);
+      const merged = new Set([...selectedIds, ...pageRows.map((r) => r.id)]);
       onSelectionChange([...merged]);
       return;
     }
-    const drop = new Set(filtered.map((r) => r.id));
+    const drop = new Set(pageRows.map((r) => r.id));
     onSelectionChange(selectedIds.filter((id) => !drop.has(id)));
   }
 
@@ -115,7 +132,7 @@ export function CaseTable({
           className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring sm:max-w-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Showing {filtered.length} of {cases.length} · Open a row to see all 30 fields
+          Showing {pageRows.length} of {filtered.length} filtered ({cases.length} total) · Open a row to see all 30 fields
         </p>
       </div>
 
@@ -150,7 +167,7 @@ export function CaseTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((row) => (
+              pageRows.map((row) => (
                 <TableRow key={row.id} data-state={selectedIds.includes(row.id) ? "selected" : undefined}>
                   {selectable ? (
                     <TableCell>
@@ -208,6 +225,37 @@ export function CaseTable({
           </TableBody>
         </Table>
       </div>
+      {filtered.length > PAGE_SIZE ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            Page {page} of {pageCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              <ChevronLeft className="size-4" />
+              Previous
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              disabled={page >= pageCount}
+              onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+            >
+              Next
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
