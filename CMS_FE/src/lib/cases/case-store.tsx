@@ -76,6 +76,23 @@ export function CaseProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [authReady, reload]);
 
+  useEffect(() => {
+    if (!authReady || !token) return;
+
+    const refreshInterval = window.setInterval(() => {
+      void reload();
+    }, 30_000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(refreshInterval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [authReady, reload, token]);
+
   const getForCourtCategory = useCallback(
     (courtId: string, category: CaseCategory) =>
       cases.filter((c) => c.courtId === courtId && c.caseCategory === category),

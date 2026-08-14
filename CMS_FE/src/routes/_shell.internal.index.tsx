@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 
 import { CourtCaseBlock } from "@/components/cases/court-case-block";
 import { AddCaseLauncher } from "@/components/cases/add-case-launcher";
@@ -29,14 +28,13 @@ export const Route = createFileRoute("/_shell/internal/")({
 
 function InternalCourtsPage() {
   const { can, user } = useAuth();
-  const { cases, countByLayer } = useCaseStore();
-  const { internal, loading, fromApi, error, reload } = useCourts("internal");
+  const { cases } = useCaseStore();
+  const { internal, loading, error, reload } = useCourts("internal");
 
   return (
     <div className="space-y-5 p-3 sm:space-y-6 sm:p-5 md:p-6">
       <PageHeader
         title="Internal Courts"
-        description={`Total internal records: ${countByLayer("internal")}. Hierarchy: Federal Secretary → Joint Secretary → Chairman → Administrator → Assistant / Deputy Administrator.${fromApi ? " Courts loaded from database." : loading ? " Loading courts..." : " Courts unavailable."}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <AddCourtDialog layer="internal" onCreated={() => void reload()} />
@@ -61,35 +59,6 @@ function InternalCourtsPage() {
           buildPayload={() => buildLayerSummaryReport("internal", internal, cases, user)}
         />
       ) : null}
-
-      <Panel title="How to work this register">
-        <ol className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="font-semibold text-foreground">1. Pick a court</span>
-            <p className="mt-1 text-xs">Choose Federal Secretary through Asst. / Dy. Administrator below.</p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              2. Open a category <Eye className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">Decided, Pending, Restraining Order, or Direction Cases.</p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              3. Add / edit <Plus className="size-3.5" /> <Pencil className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">
-              {can("cases:create") ? "Admin+ can add cases." : "Ask Admin to add cases."} Staff can edit proceedings.
-            </p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              4. Delete <Trash2 className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">Admin+ can delete one row, selected rows, or clear a category.</p>
-          </li>
-        </ol>
-      </Panel>
 
       <Panel title={`Internal court case categories (${internal.length})`}>
         {loading && internal.length === 0 ? (

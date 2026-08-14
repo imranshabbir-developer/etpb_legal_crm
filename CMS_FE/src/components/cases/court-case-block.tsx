@@ -29,14 +29,14 @@ export function CourtCaseBlock({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft">
-      <div className="relative bg-primary px-3 py-2.5 text-center">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-primary-foreground sm:text-xs">
-          {formatCourtLabel(court.name)}
-        </p>
-        <p className="mt-0.5 text-[10px] text-primary-foreground/80">{totalCases} total cases</p>
-        <div className="absolute right-1.5 top-1.5">
-          <EditCourtDialog court={court} onUpdated={onCourtUpdated} />
+      <div className="flex items-start gap-2 bg-primary px-2.5 py-2.5">
+        <div className="min-w-0 flex-1 text-center">
+          <p className="text-[11px] font-bold uppercase leading-snug tracking-wide text-primary-foreground sm:text-xs">
+            {formatCourtLabel(court.name)}
+          </p>
+          <p className="mt-0.5 text-[10px] text-primary-foreground/80">{totalCases} total cases</p>
         </div>
+        <EditCourtDialog court={court} onUpdated={onCourtUpdated} />
       </div>
       <div className="bg-primary-soft px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-primary-deep">
         Cases — open a category, or use Add case

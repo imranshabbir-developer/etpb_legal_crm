@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ type FieldDef = {
   key: keyof FormState;
   label: string;
   colSpan?: 1 | 2;
+  input?: "text" | "date";
 };
 
 type StepDef = {
@@ -68,7 +70,7 @@ const STEPS: StepDef[] = [
     subtitle: "Columns 1–4, 9–10",
     fields: [
       { key: "caseNo", label: "(2) Case No." },
-      { key: "dateOfInstitution", label: "(3) Date of Institution" },
+      { key: "dateOfInstitution", label: "(3) Date of Institution", input: "date" },
       { key: "caseTitled", label: "(9) Case Titled", colSpan: 2 },
     ],
   },
@@ -89,9 +91,13 @@ const STEPS: StepDef[] = [
     subtitle: "Columns 11–15",
     fields: [
       { key: "nameOfCounsel", label: "(11) Name of Counsel" },
-      { key: "dateOfEntrustmentToCounsel", label: "(12) Date of Entrustment to Counsel" },
+      {
+        key: "dateOfEntrustmentToCounsel",
+        label: "(12) Date of Entrustment to Counsel",
+        input: "date",
+      },
       { key: "todayCourtProceedings", label: "(13) Today Court Proceedings", colSpan: 2 },
-      { key: "nextDateOfHearing", label: "(14) Next Date of Hearing" },
+      { key: "nextDateOfHearing", label: "(14) Next Date of Hearing", input: "date" },
       { key: "nextDateProceedings", label: "(15) Next Date Proceedings" },
     ],
   },
@@ -100,13 +106,13 @@ const STEPS: StepDef[] = [
     title: "Proceedings & decision",
     subtitle: "Columns 16–23, 28–29",
     fields: [
-      { key: "dateOfDecision", label: "(16) Date of Decision" },
+      { key: "dateOfDecision", label: "(16) Date of Decision", input: "date" },
       { key: "decidedInFavourOfIps", label: "(17) Decided in Favour of IPS" },
       { key: "decidedAgainstIps", label: "(18) Decided Against IPS" },
       { key: "fillingOfAppeal", label: "(19) Filling of Appeal" },
       { key: "dateGistOfProceedings", label: "(20) Date / Gist of Proceedings", colSpan: 2 },
-      { key: "proceedingDate", label: "(21) Proceeding Date" },
-      { key: "previousDate", label: "(22) Previous Date" },
+      { key: "proceedingDate", label: "(21) Proceeding Date", input: "date" },
+      { key: "previousDate", label: "(22) Previous Date", input: "date" },
       { key: "requirementForNextDateOfHearing", label: "(23) Requirement For Next Date of Hearing", colSpan: 2 },
       { key: "shortOrder", label: "(28) Short Order", colSpan: 2 },
       { key: "finalOrder", label: "(29) Final Order", colSpan: 2 },
@@ -339,13 +345,22 @@ export function CaseFormDialog({
                 <Label htmlFor={field.key} className="text-xs font-semibold text-foreground/80">
                   {field.label}
                 </Label>
-                <Input
-                  id={field.key}
-                  type="text"
-                  value={form[field.key]}
-                  onChange={(e) => setField(field.key, e.target.value)}
-                  className="h-10 rounded-lg border-emerald-950/15 bg-white text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/25 dark:border-emerald-100/15 dark:bg-[#17211b]"
-                />
+                {field.input === "date" ? (
+                  <DatePicker
+                    id={field.key}
+                    value={form[field.key]}
+                    onChange={(value) => setField(field.key, value)}
+                    placeholder={`Select ${field.label.replace(/^\(\d+\)\s*/, "").toLowerCase()}`}
+                  />
+                ) : (
+                  <Input
+                    id={field.key}
+                    type="text"
+                    value={form[field.key]}
+                    onChange={(e) => setField(field.key, e.target.value)}
+                    className="h-10 rounded-lg border-emerald-950/15 bg-white text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/25 dark:border-emerald-100/15 dark:bg-[#17211b]"
+                  />
+                )}
               </div>
             ))}
           </div>

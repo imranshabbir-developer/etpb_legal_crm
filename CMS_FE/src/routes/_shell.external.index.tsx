@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 
 import { CourtCaseBlock } from "@/components/cases/court-case-block";
 import { AddCaseLauncher } from "@/components/cases/add-case-launcher";
@@ -29,14 +28,13 @@ export const Route = createFileRoute("/_shell/external/")({
 
 function ExternalCourtsPage() {
   const { can, user } = useAuth();
-  const { cases, countByLayer } = useCaseStore();
-  const { external, loading, fromApi, error, reload } = useCourts("external");
+  const { cases } = useCaseStore();
+  const { external, loading, error, reload } = useCourts("external");
 
   return (
     <div className="space-y-5 p-3 sm:space-y-6 sm:p-5 md:p-6">
       <PageHeader
         title="External Courts"
-        description={`Total external records: ${countByLayer("external")}. Most forums track Restraining Order and Direction Cases; Other Courts also track Decided and Pending Cases.${fromApi ? " Courts loaded from database." : loading ? " Loading courts..." : " Courts unavailable."}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <AddCourtDialog layer="external" onCreated={() => void reload()} />
@@ -61,35 +59,6 @@ function ExternalCourtsPage() {
           buildPayload={() => buildLayerSummaryReport("external", external, cases, user)}
         />
       ) : null}
-
-      <Panel title="How to work this register">
-        <ol className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="font-semibold text-foreground">1. Pick a court</span>
-            <p className="mt-1 text-xs">From Constitutional Court through Other Courts.</p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              2. Open a category <Eye className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">Use the ochre category cells — only categories defined for that court appear.</p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              3. Add / edit <Plus className="size-3.5" /> <Pencil className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">
-              {can("cases:create") ? "Admin+ can add cases." : "Ask Admin to add cases."} Staff can update fields.
-            </p>
-          </li>
-          <li className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2">
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-              4. Delete <Trash2 className="size-3.5" />
-            </span>
-            <p className="mt-1 text-xs">Admin+ can delete one, selected, or clear the open category.</p>
-          </li>
-        </ol>
-      </Panel>
 
       <Panel title={`External court case categories (${external.length})`}>
         {loading && external.length === 0 ? (

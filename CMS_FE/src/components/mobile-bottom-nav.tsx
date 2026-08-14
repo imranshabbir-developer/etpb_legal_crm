@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Landmark, Scale, Settings, UsersRound, AlarmClock, Bell } from "lucide-react";
+import { LayoutDashboard, Landmark, Scale, Settings, UsersRound, AlarmClock } from "lucide-react";
 
 import { useAuth } from "@/lib/cases/auth-context";
 import { useModules } from "@/lib/cases/modules-context";
@@ -42,12 +42,6 @@ export function MobileBottomNav() {
             to: "/reminders",
             icon: AlarmClock,
             match: (path: string) => path.startsWith("/reminders"),
-          },
-          {
-            label: "Alerts",
-            to: "/notifications",
-            icon: Bell,
-            match: (path: string) => path.startsWith("/notifications"),
           },
         ]
       : []),

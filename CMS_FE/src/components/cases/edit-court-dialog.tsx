@@ -78,13 +78,14 @@ export function EditCourtDialog({
     <>
       <Button
         type="button"
-        size="sm"
+        size="icon"
         variant="ghost"
-        className="h-7 rounded-full px-2 text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+        title="Edit court"
+        aria-label="Edit court"
+        className="size-7 shrink-0 rounded-full text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
         onClick={() => setOpen(true)}
       >
         <Pencil className="size-3.5" />
-        Edit
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
