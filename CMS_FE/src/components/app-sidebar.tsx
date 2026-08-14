@@ -6,11 +6,13 @@ import {
   Settings,
   UsersRound,
   LogOut,
+  AlarmClock,
   Bell,
 } from "lucide-react";
 
 import ffLogo from "@/assets/ff_logo.png";
 import { useAuth } from "@/lib/cases/auth-context";
+import { useModules } from "@/lib/cases/modules-context";
 import { ROLE_LABELS } from "@/lib/cases/permissions";
 import { clearSession } from "@/lib/cases/session";
 import {
@@ -41,6 +43,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, can, logout } = useAuth();
+  const { modules } = useModules();
 
   const isActive = (url: string) => pathname === url || pathname.startsWith(`${url}/`);
 
@@ -92,33 +95,37 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/internal")}
-                  tooltip="Internal Courts"
-                  className={activeItemClass}
-                >
-                  <Link to="/internal">
-                    <Landmark />
-                    <span>Internal Courts</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {modules.showInternalModule ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/internal")}
+                    tooltip="Internal Courts"
+                    className={activeItemClass}
+                  >
+                    <Link to="/internal">
+                      <Landmark />
+                      <span>Internal Courts</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
 
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/external")}
-                  tooltip="External Courts"
-                  className={activeItemClass}
-                >
-                  <Link to="/external">
-                    <Scale />
-                    <span>External Courts</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {modules.showExternalModule ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/external")}
+                    tooltip="External Courts"
+                    className={activeItemClass}
+                  >
+                    <Link to="/external">
+                      <Scale />
+                      <span>External Courts</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
 
               {can("users:view") ? (
                 <SidebarMenuItem>
@@ -131,19 +138,36 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ) : null}
 
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/notifications")}
-                  tooltip="Notifications"
-                  className={activeItemClass}
-                >
-                  <Link to="/notifications">
-                    <Bell />
-                    <span>Notifications</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {can("cases:view") ? (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive("/reminders")}
+                      tooltip="Reminders"
+                      className={activeItemClass}
+                    >
+                      <Link to="/reminders">
+                        <AlarmClock />
+                        <span>Reminders</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive("/notifications")}
+                      tooltip="Notifications"
+                      className={activeItemClass}
+                    >
+                      <Link to="/notifications">
+                        <Bell />
+                        <span>Notifications</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              ) : null}
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/settings")} tooltip="Settings" className={activeItemClass}>

@@ -36,6 +36,20 @@ function createApp() {
     }),
   );
 
+  app.use(
+    env.apiPrefix,
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: env.nodeEnv === "production" ? 600 : 2000,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        success: false,
+        message: "Too many requests. Please try again later.",
+      },
+    }),
+  );
+
   app.use(env.apiPrefix, apiRoutes);
   app.use(notFoundHandler);
   app.use(errorHandler);

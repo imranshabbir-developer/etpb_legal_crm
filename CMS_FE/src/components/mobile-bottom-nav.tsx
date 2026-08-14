@@ -1,27 +1,63 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Landmark, Scale, Settings, UsersRound } from "lucide-react";
+import { LayoutDashboard, Landmark, Scale, Settings, UsersRound, AlarmClock, Bell } from "lucide-react";
 
 import { useAuth } from "@/lib/cases/auth-context";
+import { useModules } from "@/lib/cases/modules-context";
 import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { can } = useAuth();
+  const { modules } = useModules();
 
   const tabs = [
     { label: "Home", to: "/dashboard", icon: LayoutDashboard, match: (path: string) => path === "/dashboard" },
-    { label: "Internal", to: "/internal", icon: Landmark, match: (path: string) => path.startsWith("/internal") },
-    { label: "External", to: "/external", icon: Scale, match: (path: string) => path.startsWith("/external") },
+    ...(modules.showInternalModule
+      ? [
+          {
+            label: "Internal",
+            to: "/internal",
+            icon: Landmark,
+            match: (path: string) => path.startsWith("/internal"),
+          },
+        ]
+      : []),
+    ...(modules.showExternalModule
+      ? [
+          {
+            label: "External",
+            to: "/external",
+            icon: Scale,
+            match: (path: string) => path.startsWith("/external"),
+          },
+        ]
+      : []),
     ...(can("users:view")
       ? [{ label: "Users", to: "/users", icon: UsersRound, match: (path: string) => path.startsWith("/users") }]
+      : []),
+    ...(can("cases:view")
+      ? [
+          {
+            label: "Reminders",
+            to: "/reminders",
+            icon: AlarmClock,
+            match: (path: string) => path.startsWith("/reminders"),
+          },
+          {
+            label: "Alerts",
+            to: "/notifications",
+            icon: Bell,
+            match: (path: string) => path.startsWith("/notifications"),
+          },
+        ]
       : []),
     {
       label: "Settings",
       to: "/settings",
       icon: Settings,
-      match: (path: string) => path.startsWith("/settings") || path.startsWith("/notifications"),
+      match: (path: string) => path.startsWith("/settings"),
     },
-  ] as const;
+  ];
 
   return (
     <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-30 md:hidden" aria-label="Main navigation">

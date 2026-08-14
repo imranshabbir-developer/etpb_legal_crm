@@ -26,9 +26,9 @@ import { useCaseStore } from "@/lib/cases/case-store";
 import {
   CASE_CATEGORY_LABELS,
   formatCourtLabel,
-  getCourtsByLayer,
 } from "@/lib/cases/courts";
-import { buildCourtCategoryRegisterReport } from "@/lib/reports/builders";
+import { useCourts } from "@/lib/cases/use-courts";
+import { buildCourtCategoryRegisterReport, buildPendingHearingsReport } from "@/lib/reports/builders";
 import type { CaseCategory, CaseRecord, CourtDefinition, CourtLayer } from "@/lib/cases/types";
 import { cn } from "@/lib/utils";
 
@@ -45,10 +45,11 @@ export function CaseRegisterPage({
 }) {
   const { can, user } = useAuth();
   const navigate = useNavigate();
-  const { getForCourtCategory, addCase, updateCase, deleteCase, deleteCases, clearCourtCategory } =
+  const { getForCourtCategory, addCase, updateCase, deleteCase, deleteCases, clearCourtCategory, ready, error } =
     useCaseStore();
+  const { internal, external } = useCourts(layer);
 
-  const courts = getCourtsByLayer(layer);
+  const courts = layer === "internal" ? internal : external;
   const rows = getForCourtCategory(court.id, category);
   const basePath = layer === "internal" ? ("/internal" as const) : ("/external" as const);
   const registerTo =
@@ -80,7 +81,7 @@ export function CaseRegisterPage({
     if (confirmKind === "selected") {
       return {
         title: `Delete ${selectedCount} selected case${selectedCount === 1 ? "" : "s"}?`,
-        body: "Selected records will be removed from this register. This cannot be undone in the demo store.",
+        body: "Selected records will be removed from this register in the database.",
       };
     }
     return {
@@ -102,21 +103,28 @@ export function CaseRegisterPage({
   }
 
   function runDelete() {
-    if (confirmKind === "single" && deleteTarget) {
-      deleteCase(deleteTarget.id);
-      setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
-      toast.success(`Deleted ${deleteTarget.caseNo}`);
-    } else if (confirmKind === "selected") {
-      deleteCases(selectedIds);
-      toast.success(`Deleted ${selectedCount} case${selectedCount === 1 ? "" : "s"}`);
-      setSelectedIds([]);
-    } else if (confirmKind === "all") {
-      const removed = clearCourtCategory(court.id, category);
-      setSelectedIds([]);
-      toast.success(`Cleared ${removed} record${removed === 1 ? "" : "s"}`);
-    }
-    setConfirmKind(null);
-    setDeleteTarget(null);
+    void (async () => {
+      try {
+        if (confirmKind === "single" && deleteTarget) {
+          await deleteCase(deleteTarget.id);
+          setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+          toast.success(`Deleted ${deleteTarget.caseNo}`);
+        } else if (confirmKind === "selected") {
+          await deleteCases(selectedIds);
+          toast.success(`Deleted ${selectedCount} case${selectedCount === 1 ? "" : "s"}`);
+          setSelectedIds([]);
+        } else if (confirmKind === "all") {
+          const removed = await clearCourtCategory(court.id, category);
+          setSelectedIds([]);
+          toast.success(`Cleared ${removed} record${removed === 1 ? "" : "s"}`);
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Delete failed");
+      } finally {
+        setConfirmKind(null);
+        setDeleteTarget(null);
+      }
+    })();
   }
 
   return (
@@ -189,12 +197,34 @@ export function CaseRegisterPage({
         ))}
       </div>
 
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Could not load cases ({error}). Refresh after checking the API connection.
+        </p>
+      ) : null}
+      {!ready && !error ? (
+        <p className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Loading case register…
+        </p>
+      ) : null}
+
       {can("cases:view") ? (
         <ReportExportBar
           compact
           title={`${CASE_CATEGORY_LABELS[category]} register export`}
           description="Official cause list / register for this court and category."
           buildPayload={() => buildCourtCategoryRegisterReport(court, category, rows, user)}
+          extras={[
+            {
+              label: "Pending hearings",
+              formats: ["pdf", "csv"],
+              buildPayload: () =>
+                buildPendingHearingsReport(rows, user, {
+                  courtName: court.name,
+                  category,
+                }),
+            },
+          ]}
         />
       ) : null}
 
@@ -291,14 +321,14 @@ export function CaseRegisterPage({
         court={court}
         category={category}
         initial={editRow}
-        onSubmit={(values) => {
+        onSubmit={async (values) => {
           if (formMode === "create") {
-            const created = addCase(values);
+            const created = await addCase(values);
             toast.success(`Added ${created.caseNo}`);
             return;
           }
           if (values.id) {
-            updateCase(values.id, values);
+            await updateCase(values.id, values);
             toast.success(`Updated ${values.caseNo}`);
           }
         }}

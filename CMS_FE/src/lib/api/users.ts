@@ -42,6 +42,24 @@ export function updateUserStatus(token: string, id: string, status: "Active" | "
   });
 }
 
+export function updateUser(
+  token: string,
+  id: string,
+  payload: {
+    name?: string;
+    email?: string;
+    password?: string;
+    role?: "admin" | "staff";
+    status?: "Active" | "Inactive";
+  },
+) {
+  return apiRequest<ApiUser>(`/users/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
 export function changePassword(
   token: string,
   payload: { currentPassword: string; newPassword: string },

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, LogOut, Search, User } from "lucide-react";
+import { ChevronDown, LogOut, User } from "lucide-react";
 
-import { NotificationDropdown } from "@/components/notification-dropdown";
+import { CaseSearch } from "@/components/case-search";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ReminderDropdown } from "@/components/reminder-dropdown";
+import { NotificationDropdown } from "@/components/inbox-notification-dropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -45,14 +46,12 @@ export function Topbar() {
             <img src={ffLogo} alt="IPS" className="h-9 max-w-[9rem] object-contain" />
           </Link>
 
-          <div className="relative hidden min-w-0 items-center md:flex md:w-full md:max-w-sm">
-            <Search className="absolute left-3 size-4 text-muted-foreground" />
-            <Input placeholder="Search case no, title, counsel…" className="pl-9" />
-          </div>
+          <CaseSearch className="hidden md:block md:w-full md:max-w-sm" />
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
+          <ReminderDropdown />
           <NotificationDropdown />
 
           <DropdownMenu>
@@ -112,13 +111,7 @@ export function Topbar() {
       </div>
 
       <div className="border-t border-border/40 px-3 pb-2.5 pt-2 md:hidden">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search case no, title, counsel…"
-            className="mobile-app-search h-10 rounded-full border-border/60 bg-card/90 pl-9 shadow-sm"
-          />
-        </div>
+        <CaseSearch inputClassName="mobile-app-search h-10 rounded-full border-border/60 bg-card/90 shadow-sm" />
       </div>
     </header>
   );

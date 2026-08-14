@@ -1,16 +1,22 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { CaseRegisterPage } from "@/components/cases/case-register";
-import { CASE_CATEGORY_LABELS, getCourtById, isValidCourtCategory } from "@/lib/cases/courts";
+import { fetchCourtById, toCourtDefinition } from "@/lib/api/courts";
+import { CASE_CATEGORY_LABELS } from "@/lib/cases/courts";
 import type { CaseCategory } from "@/lib/cases/types";
 
 export const Route = createFileRoute("/_shell/internal/$courtId/$category")({
-  loader: ({ params }) => {
-    const court = getCourtById(params.courtId);
-    if (!court || court.layer !== "internal" || !isValidCourtCategory(params.courtId, params.category)) {
+  loader: async ({ params }) => {
+    try {
+      const court = toCourtDefinition(await fetchCourtById(params.courtId));
+      const category = params.category as CaseCategory;
+      if (court.layer !== "internal" || !court.categories.includes(category)) {
+        throw notFound();
+      }
+      return { court, category };
+    } catch {
       throw notFound();
     }
-    return { court, category: params.category as CaseCategory };
   },
   head: ({ loaderData }) => ({
     meta: [

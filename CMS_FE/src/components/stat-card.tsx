@@ -17,10 +17,12 @@ export function StatCard({
   value: string;
   progress: number;
   caption: string;
-  trend: number;
+  /** Month-over-month % from live DB aggregates. Omit when unavailable. */
+  trend?: number | null;
   featured?: boolean;
 }) {
-  const up = trend >= 0;
+  const showTrend = typeof trend === "number" && Number.isFinite(trend);
+  const up = showTrend ? trend >= 0 : true;
 
   return (
     <div
@@ -35,15 +37,17 @@ export function StatCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="stat-card-label truncate">{label}</p>
-            <span
-              className={cn(
-                "stat-card-trend flex shrink-0 items-center gap-0.5",
-                up ? "text-primary-deep" : "text-destructive",
-              )}
-            >
-              {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-              {Math.abs(trend)}%
-            </span>
+            {showTrend ? (
+              <span
+                className={cn(
+                  "stat-card-trend flex shrink-0 items-center gap-0.5",
+                  up ? "text-primary-deep" : "text-destructive",
+                )}
+              >
+                {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
+                {Math.abs(trend)}%
+              </span>
+            ) : null}
           </div>
 
           <p className="stat-card-value mt-1 truncate">{value}</p>

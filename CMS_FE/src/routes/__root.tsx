@@ -12,6 +12,7 @@ import { type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/cases/auth-context";
 import { CaseProvider } from "@/lib/cases/case-store";
+import { ModulesProvider } from "@/lib/cases/modules-context";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme-context";
 import ffLogo from "@/assets/ff_logo.png";
 
@@ -128,10 +129,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <CaseProvider>
-            <Outlet />
-            <Toaster />
-          </CaseProvider>
+          <ModulesProvider>
+            <CaseProvider>
+              <Outlet />
+              <Toaster />
+            </CaseProvider>
+          </ModulesProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

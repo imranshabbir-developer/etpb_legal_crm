@@ -11,6 +11,7 @@ export type Permission =
   | "cases:create"
   | "cases:edit"
   | "cases:delete"
+  | "courts:manage"
   | "users:view"
   | "users:manage-staff"
   | "users:manage-admin"
@@ -25,18 +26,19 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "cases:create",
     "cases:edit",
     "cases:delete",
+    "courts:manage",
     "users:view",
     "users:manage-staff",
     "users:manage-admin",
     "settings:view",
     "settings:manage",
-    "modules:configure",
   ],
   "super-admin": [
     "cases:view",
     "cases:create",
     "cases:edit",
     "cases:delete",
+    "courts:manage",
     "users:view",
     "users:manage-staff",
     "users:manage-admin",

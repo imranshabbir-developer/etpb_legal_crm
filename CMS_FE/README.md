@@ -1,32 +1,64 @@
-# Verdant Insights Dashboard
+# IPS / ETPB Legal CRM — Frontend (`CMS_FE`)
 
-i have attached a dashboard. read it very very carefully , please ignore and don't add or create logo like figma, adobe xd, adobe photoshop which are showing on the dashboard.
-carefully analyze the dashboard it include green color but green color is gradient in touch. from the bottom side the dashboard looks a light more green as soon as the color go upwards it is becoming light / white which is creating an awesome affect.
-i want you to create following items in the sidebar
-Dashboard (it includes stat cards on top , add modern and stylish graphs / charts, recent activities / enteries according to my content. 
-2. sidebar item is Leads
-in Leads sub items should be WhatsApp, Email, Cold Calling. when user click on Whatsapp the sub items should collapse down / open WhatsApp, Email, Cold Calling.
-3. sidebar item should be Integration and in integration these are sub items i.e. WhatsApp, Email, Meta Marketing, Meta Adds.
-4. Teams / Users. 
-admin can add team members, crud operations complete with modern look dashboard .
-5. Settings (settings should include settings related to dashboards.
-6. Integration: in integration like whatsapp, email, meta etc which is general required. 
-each side bar item should have a detail page, sub detail page in case of any link is available then that link should also have detail page and that detail page should have relevant detail. 
+TanStack Start (React) client for the Evacuee Trust Property Board Legal CRM Management System ([ips.gov.pk](https://ips.gov.pk/)).
 
-i want you to follow the attached snapshot and create a similar stunning look dashboard.
+## Stack
 
-first create a login page which should be in the center of page, 
-whole the login page background should be green with gradient look and the login page should be transparent. 
-on the login page add some floating icons to make it more engaging. 
-on login page when user give an random email and password and click on login button it should navigate to dashboard.
+- React + TanStack Router / Start
+- Tailwind CSS + shared UI components
+- Talks to `CMS_BE` REST API (JWT auth, Postgres-backed courts/cases/users/settings/reminders/notifications)
 
-## Development
+## Prerequisites
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+- Node.js 20+ and npm
+- Backend running (see `CMS_BE/README.md` or `docs/PROJECT_PLAN.md`)
+- Copy/set `VITE_API_URL` to your API origin, e.g. `http://127.0.0.1:4000/api`
+
+## Setup
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
+cd CMS_FE
 npm i
 npm run dev
 ```
+
+Production build:
+
+```sh
+npm run build
+npm run preview
+```
+
+Railway Node build:
+
+```sh
+npm run build:railway
+node .output/server/index.mjs
+```
+
+`railway.json` and `Dockerfile` package the frontend with Nitro's `node-server` preset. The regular `npm run build` keeps the Cloudflare preset.
+
+## Demo accounts (after `CMS_BE` seed)
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Super Admin | `superadmin@ips.gov.pk` | `SuperAdmin@123` |
+| Admin | `admin@ips.gov.pk` | `Admin@123` |
+| Staff | `staff@ips.gov.pk` | `Staff@123` |
+
+## Main routes
+
+- `/` — login
+- `/dashboard` — live case totals, charts, court blocks, reminders snapshot
+- `/internal`, `/external` — court overviews (DB-driven)
+- `/internal/$courtId/$category`, `/external/$courtId/$category` — case registers
+- `/reminders` — hearing reminders from case next dates
+- `/notifications` — persistent per-user inbox with read state and case deep-links
+- `/users` — Admin+ user directory
+- `/settings` — module flags / preferences
+
+## Notes
+
+- Courts and cases are **database-only** (no mock court fallbacks).
+- Topbar search filters loaded cases and opens the matching court register.
+- Official PDF/CSV/DOCX exports use the Government of the Punjab / ETPB letterhead layout under Reports.
