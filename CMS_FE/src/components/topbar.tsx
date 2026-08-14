@@ -2,11 +2,8 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, LogOut, User } from "lucide-react";
 
-import { CaseSearch } from "@/components/case-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ReminderDropdown } from "@/components/reminder-dropdown";
-import { NotificationDropdown } from "@/components/inbox-notification-dropdown";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -40,19 +37,14 @@ export function Topbar() {
     <header className="app-topbar mobile-app-topbar sticky top-0 z-20">
       <div className="flex h-14 w-full items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4 md:justify-between md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-initial">
-          <SidebarTrigger className="shrink-0" />
-
           <Link to="/dashboard" className="flex min-w-0 flex-1 items-center justify-center md:hidden">
             <img src={ffLogo} alt="IPS" className="h-9 max-w-[9rem] object-contain" />
           </Link>
-
-          <CaseSearch className="hidden md:block md:w-full md:max-w-sm" />
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
           <ReminderDropdown />
-          <NotificationDropdown />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -108,10 +100,6 @@ export function Topbar() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-
-      <div className="border-t border-border/40 px-3 pb-2.5 pt-2 md:hidden">
-        <CaseSearch inputClassName="mobile-app-search h-10 rounded-full border-border/60 bg-card/90 shadow-sm" />
       </div>
     </header>
   );

@@ -7,7 +7,6 @@ import {
   UsersRound,
   LogOut,
   AlarmClock,
-  Bell,
 } from "lucide-react";
 
 import ffLogo from "@/assets/ff_logo.png";
@@ -139,34 +138,19 @@ export function AppSidebar() {
               ) : null}
 
               {can("cases:view") ? (
-                <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive("/reminders")}
-                      tooltip="Reminders"
-                      className={activeItemClass}
-                    >
-                      <Link to="/reminders">
-                        <AlarmClock />
-                        <span>Reminders</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive("/notifications")}
-                      tooltip="Notifications"
-                      className={activeItemClass}
-                    >
-                      <Link to="/notifications">
-                        <Bell />
-                        <span>Notifications</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/reminders")}
+                    tooltip="Reminders"
+                    className={activeItemClass}
+                  >
+                    <Link to="/reminders">
+                      <AlarmClock />
+                      <span>Reminders</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               ) : null}
 
               <SidebarMenuItem>

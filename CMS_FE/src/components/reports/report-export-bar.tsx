@@ -6,6 +6,34 @@ import { exportReport } from "@/lib/reports/export";
 import type { ReportFormat, ReportPayload } from "@/lib/reports/types";
 import { cn } from "@/lib/utils";
 
+const FORMAT_META: Record<
+  ReportFormat,
+  {
+    label: string;
+    icon: typeof FileText;
+    className: string;
+  }
+> = {
+  pdf: {
+    label: "PDF",
+    icon: FileText,
+    className:
+      "border-red-300 bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70",
+  },
+  csv: {
+    label: "CSV",
+    icon: FileSpreadsheet,
+    className:
+      "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/70",
+  },
+  docx: {
+    label: "Word",
+    icon: FileDown,
+    className:
+      "border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 hover:text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/70",
+  },
+};
+
 type ReportExportBarProps = {
   title?: string;
   description?: string;
@@ -39,6 +67,33 @@ export function ReportExportBar({
     }
   }
 
+  function formatButton(
+    format: ReportFormat,
+    payloadFactory: () => ReportPayload,
+    key: string,
+    reportLabel?: string,
+  ) {
+    const meta = FORMAT_META[format];
+    const Icon = meta.icon;
+
+    return (
+      <Button
+        key={key}
+        type="button"
+        size="sm"
+        variant="outline"
+        className={cn("rounded-full font-semibold", meta.className)}
+        disabled={!!busy}
+        onClick={() => void run(format, payloadFactory, key)}
+        data-testid={`report-export-${format}`}
+        aria-label={reportLabel ? `${reportLabel} — ${meta.label}` : `Export ${meta.label}`}
+      >
+        {busy === key ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}
+        {reportLabel ? `${reportLabel} · ${meta.label}` : meta.label}
+      </Button>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -59,66 +114,19 @@ export function ReportExportBar({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full border-emerald-800/25"
-            disabled={!!busy}
-            onClick={() => void run("pdf", buildPayload, "main-pdf")}
-            data-testid="report-export-pdf"
-          >
-            {busy === "main-pdf" ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
-            PDF
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full border-emerald-800/25"
-            disabled={!!busy}
-            onClick={() => void run("csv", buildPayload, "main-csv")}
-            data-testid="report-export-csv"
-          >
-            {busy === "main-csv" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="size-3.5" />
-            )}
-            CSV
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full border-emerald-800/25"
-            disabled={!!busy}
-            onClick={() => void run("docx", buildPayload, "main-docx")}
-            data-testid="report-export-docx"
-          >
-            {busy === "main-docx" ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-            Word
-          </Button>
+          {formatButton("pdf", buildPayload, "main-pdf")}
+          {formatButton("csv", buildPayload, "main-csv")}
+          {formatButton("docx", buildPayload, "main-docx")}
 
           {extras?.map((extra) =>
-            (extra.formats ?? ["pdf"]).map((format) => (
-              <Button
-                key={`${extra.label}-${format}`}
-                type="button"
-                size="sm"
-                className="rounded-full bg-brand-gradient font-semibold"
-                disabled={!!busy}
-                onClick={() => void run(format, extra.buildPayload, `${extra.label}-${format}`)}
-                data-testid="report-export-executive"
-              >
-                {busy === `${extra.label}-${format}` ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <ScrollText className="size-3.5" />
-                )}
-                {extra.label}
-              </Button>
-            )),
+            (extra.formats ?? ["pdf"]).map((format) =>
+              formatButton(
+                format,
+                extra.buildPayload,
+                `${extra.label}-${format}`,
+                extra.label.replace(/\s*\((PDF|CSV|Word)\)\s*$/i, ""),
+              ),
+            ),
           )}
         </div>
       </div>

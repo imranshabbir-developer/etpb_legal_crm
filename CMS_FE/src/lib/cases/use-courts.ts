@@ -39,6 +39,21 @@ export function useCourts(layer?: CourtLayer): UseCourtsResult {
     void reload();
   }, [reload]);
 
+  useEffect(() => {
+    const refreshInterval = window.setInterval(() => {
+      void reload();
+    }, 30_000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(refreshInterval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [reload]);
+
   const internal = useMemo(
     () => courts.filter((c) => c.layer === "internal"),
     [courts],

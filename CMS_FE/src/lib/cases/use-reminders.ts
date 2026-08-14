@@ -86,7 +86,7 @@ export function useReminders(options?: { daysAhead?: number; limit?: number }) {
   useEffect(() => {
     if (!authReady) return;
     void reload();
-  }, [authReady, reload, cases.length]);
+  }, [authReady, reload, cases]);
 
   return {
     items: data?.items ?? [],

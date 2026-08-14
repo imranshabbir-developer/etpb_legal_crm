@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Scale,
   Landmark,
@@ -7,21 +7,7 @@ import {
   FileWarning,
   ClipboardList,
   AlarmClock,
-  Bell,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import { PageHeader } from "@/components/topbar";
 import { Panel, StatCard } from "@/components/stat-card";
@@ -32,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { fetchDashboardSummary, type DashboardSummary } from "@/lib/api/dashboard";
 import { useAuth } from "@/lib/cases/auth-context";
 import { useCaseStore } from "@/lib/cases/case-store";
-import { ROLE_LABELS } from "@/lib/cases/permissions";
 import {
   buildDashboardPositionReport,
   buildExecutivePackReport,
@@ -41,7 +26,6 @@ import {
 import { useCourts } from "@/lib/cases/use-courts";
 import { useModules } from "@/lib/cases/modules-context";
 import { REMINDER_TIMING_META, useReminders } from "@/lib/cases/use-reminders";
-import { useNotifications } from "@/lib/cases/use-notifications";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_shell/dashboard")({
@@ -57,16 +41,13 @@ export const Route = createFileRoute("/_shell/dashboard")({
   component: DashboardPage,
 });
 
-const PIE_COLORS = ["#1f6b45", "#2f9d63", "#3ddc84", "#e8c547"];
-
 function DashboardPage() {
   const { user, can, token } = useAuth();
-  const { cases, ready: casesReady, fromApi, error: casesError } = useCaseStore();
+  const { cases, error: casesError } = useCaseStore();
   const { internal, external, reload: reloadCourts, loading: courtsLoading, error: courtsError } =
     useCourts();
   const { modules } = useModules();
   const { items: reminderItems, counts: reminderCounts } = useReminders({ limit: 6 });
-  const { unreadCount: notificationUnread } = useNotifications();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -101,11 +82,6 @@ function DashboardPage() {
     };
   }, [token, cases]);
 
-  const monthly = summary?.monthly ?? [];
-  const split = useMemo(
-    () => (summary?.categorySplit ?? []).filter((entry) => entry.value > 0),
-    [summary],
-  );
   const trends = summary?.trends;
 
   const internalTotal = summary?.byLayer.internal ?? 0;
@@ -122,21 +98,6 @@ function DashboardPage() {
     <div className="space-y-5 p-3 sm:space-y-6 sm:p-5 md:p-6">
       <PageHeader
         title="CRM Management Dashboard"
-        description={
-          user
-            ? `Signed in as ${user.name} (${ROLE_LABELS[user.role]}). ${
-                statsReady
-                  ? `Live database: ${total} cases.`
-                  : summaryLoading
-                    ? "Loading live dashboard totals…"
-                    : summaryError
-                      ? "Dashboard summary unavailable."
-                      : fromApi && casesReady
-                        ? "Connecting to dashboard analytics…"
-                        : "Connecting to case database…"
-              } Evacuee Trust Property Board — https://ips.gov.pk/`
-            : "Evacuee Trust Property Board — Legal CRM Management System"
-        }
         actions={
           <div className="flex flex-wrap gap-2">
             <AddCaseLauncher label="Add case record" />
@@ -272,20 +233,13 @@ function DashboardPage() {
       </div>
 
       {can("cases:view") ? (
-        <div className="grid gap-3 lg:grid-cols-[0.8fr_0.8fr_1.4fr]">
+        <div className="grid gap-3 lg:grid-cols-[0.8fr_1.4fr]">
           <StatCard
             icon={<AlarmClock className="size-5" />}
             label="Active reminders"
             value={String(activeReminders)}
             progress={Math.min(100, (activeReminders / Math.max(total || activeReminders, 1)) * 100)}
             caption={`${summary?.upcomingHearings ?? 0} hearings in next 30 days · ${reminderCounts.today} today`}
-          />
-          <StatCard
-            icon={<Bell className="size-5" />}
-            label="Unread notifications"
-            value={String(notificationUnread)}
-            progress={Math.min(100, (notificationUnread / Math.max(activeReminders || notificationUnread, 1)) * 100)}
-            caption="Persistent read state for your account"
           />
           <Panel
             title="Upcoming reminders"
@@ -327,62 +281,6 @@ function DashboardPage() {
                 })}
               </ul>
             )}
-          </Panel>
-        </div>
-      ) : null}
-
-      {modules.showChartsModule ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Panel title="Monthly case load — Internal vs External">
-            <div className="h-64 w-full">
-              {!statsReady ? (
-                <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  {summaryLoading ? "Loading monthly series…" : "No dashboard summary yet."}
-                </p>
-              ) : monthly.length === 0 ? (
-                <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  No institution dates in the database for the last 6 months.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthly} barGap={4}>
-                    <CartesianGrid vertical={false} stroke="rgb(45 212 122 / 0.12)" strokeDasharray="4 7" />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} width={28} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="internal" name="Internal" fill="#2f9d63" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="external" name="External" fill="#3ddc84" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="Case categories distribution">
-            <div className="h-64 w-full">
-              {!statsReady ? (
-                <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  {summaryLoading ? "Loading category split…" : "No dashboard summary yet."}
-                </p>
-              ) : split.length === 0 ? (
-                <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  No cases in the database yet.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={split} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={3}>
-                      {split.map((entry, index) => (
-                        <Cell key={entry.key} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
           </Panel>
         </div>
       ) : null}
