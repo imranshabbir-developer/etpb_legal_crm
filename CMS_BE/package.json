@@ -10,6 +10,7 @@
     "db:seed": "node src/database/seed.js",
     "db:setup": "node src/database/migrate.js && node src/database/seed.js",
     "db:reset": "node src/database/reset.js && node src/database/seed.js",
+    "db:export-demo": "node scripts/export-demo-snapshot.js",
     "verify:env": "node scripts/verify-env.js",
     "test:auth": "node scripts/test-auth.js",
     "test:users": "node scripts/test-users.js",

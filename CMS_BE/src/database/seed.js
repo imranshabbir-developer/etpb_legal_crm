@@ -4,6 +4,11 @@ const { sequelize } = require("../config/database");
 const { Role, Permission, RolePermission, User, Court, Case, AppSetting } = require("../models");
 const { hashPassword } = require("../utils/password");
 const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
+
+const SNAPSHOT_PATH = path.join(__dirname, "data", "demo-snapshot.json");
+const TEST_COURT_RE = /^(smoke-test-court-|e2e-court-)/i;
 
 const INTERNAL_FOUR = [
   "decided-cases",
@@ -186,6 +191,17 @@ const USERS = [
     status: "Inactive",
   },
 ];
+
+function loadDemoSnapshot() {
+  if (!fs.existsSync(SNAPSHOT_PATH)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, "utf8"));
+    if (!raw || !Array.isArray(raw.cases) || raw.cases.length === 0) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
 
 async function upsertPermission(def) {
   const [row] = await Permission.findOrCreate({
@@ -433,7 +449,24 @@ async function seed() {
       }
     }
 
-    for (const courtDef of COURTS) {
+    const snapshot = loadDemoSnapshot();
+    const snapshotCourts = Array.isArray(snapshot?.courts)
+      ? snapshot.courts.filter((court) => court?.slug && !TEST_COURT_RE.test(court.slug))
+      : [];
+    const courtsToUpsert = [...COURTS];
+    for (const courtDef of snapshotCourts) {
+      if (!courtsToUpsert.some((row) => row.slug === courtDef.slug)) {
+        courtsToUpsert.push({
+          slug: courtDef.slug,
+          name: courtDef.name,
+          layer: courtDef.layer,
+          categories: courtDef.categories,
+          sortOrder: courtDef.sortOrder,
+        });
+      }
+    }
+
+    for (const courtDef of courtsToUpsert) {
       const [court, created] = await Court.findOrCreate({
         where: { slug: courtDef.slug },
         defaults: {
@@ -459,7 +492,9 @@ async function seed() {
 
     const dbCourts = await Court.findAll({ where: { isActive: true } });
     const courtBySlug = Object.fromEntries(dbCourts.map((c) => [c.slug, c]));
-    const demoCases = buildDemoCases(COURTS);
+    const demoCases = Array.isArray(snapshot?.cases) && snapshot.cases.length > 0
+      ? snapshot.cases
+      : buildDemoCases(COURTS);
     let casesCreated = 0;
     let casesUpdated = 0;
     let casesKept = 0;
@@ -501,9 +536,12 @@ async function seed() {
     console.log(`- Roles: ${ROLE_DEFS.length}`);
     console.log(`- Permissions: ${PERMISSIONS.length}`);
     console.log(`- Users: ${USERS.length}`);
-    console.log(`- Courts: ${COURTS.length}`);
+    console.log(`- Courts: ${courtsToUpsert.length}`);
     console.log(
       `- Cases: created ${casesCreated}, updated ${casesUpdated}, kept ${casesKept}` +
+        (snapshot?.cases?.length
+          ? ` from snapshot (${snapshot.cases.length} rows)`
+          : " from generated demo rows") +
         (overwriteCases ? " (SEED_OVERWRITE_CASES=true)" : " (existing demo cases preserved)"),
     );
     console.log(`- Notification inboxes synced: ${activeUsers.length}`);

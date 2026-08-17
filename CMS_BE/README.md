@@ -33,13 +33,19 @@ npm run db:reset
 
 Existing demo cases are preserved on `db:seed`. Set `SEED_OVERWRITE_CASES=true` to refresh sample hearing dates.
 
+`npm run db:export-demo` writes the current official courts/cases into `src/database/data/demo-snapshot.json` so a fresh clone matches this database.
+
 ## Demo users (after seed)
 
 | Role | Email | Password |
 | --- | --- | --- |
 | Super Admin | `superadmin@ips.gov.pk` | `SuperAdmin@123` |
 | Admin | `admin@ips.gov.pk` | `Admin@123` |
+| Legal Admin | `legal.admin@ips.gov.pk` | `Admin@123` |
 | Staff | `staff@ips.gov.pk` | `Staff@123` |
+| Records Officer | `records@ips.gov.pk` | `Staff@123` |
+| Hearing Clerk | `hearings@ips.gov.pk` | `Staff@123` |
+| Litigation Assistant | `litigation@ips.gov.pk` | `Staff@123` (Inactive) |
 
 ## API surface
 
