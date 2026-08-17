@@ -1,6 +1,6 @@
 # ETPB Legal CRM — Portable laptop setup
 
-Clone this repo, install Postgres + Node, copy env files, run `db:setup`. No database dump is required; schema and demo data come from migrations + seeds.
+Clone this repo, install Postgres + Node, copy env files, run `db:setup`. Schema comes from migrations. Users, courts, and the current demo case register come from the seeder (including `src/database/data/demo-snapshot.json`).
 
 ## Prerequisites
 
@@ -29,6 +29,7 @@ Useful commands:
 | `npm run db:migrate` | Apply Sequelize migrations only |
 | `npm run db:seed` | Idempotent roles/users/courts/cases/notifications |
 | `npm run db:reset` | Wipe + reseed (**blocked in production**) |
+| `npm run db:export-demo` | Refresh `src/database/data/demo-snapshot.json` from the current database |
 | `npm run test:smoke` | Auth → users → courts → cases → reminders → notifications → settings |
 
 Demo logins after seed:
@@ -37,7 +38,11 @@ Demo logins after seed:
 | --- | --- | --- |
 | Super Admin | `superadmin@ips.gov.pk` | `SuperAdmin@123` |
 | Admin | `admin@ips.gov.pk` | `Admin@123` |
+| Legal Admin | `legal.admin@ips.gov.pk` | `Admin@123` |
 | Staff | `staff@ips.gov.pk` | `Staff@123` |
+| Records Officer | `records@ips.gov.pk` | `Staff@123` |
+| Hearing Clerk | `hearings@ips.gov.pk` | `Staff@123` |
+| Litigation Assistant | `litigation@ips.gov.pk` | `Staff@123` (Inactive) |
 
 Existing demo cases are preserved on reseed unless `SEED_OVERWRITE_CASES=true`.
 
